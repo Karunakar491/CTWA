@@ -8,35 +8,8 @@ const handleErrorFix = (error: any) => {
          fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New Headline"');
          wasFixed = true;
        } else if (pathParts.includes('TextBody')) {
-         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New text content"');
-         wasFixed = true;
-       } else if (pathParts.includes('TextCaption')) {
-         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New caption"');
-         wasFixed = true;
-       } else if (pathParts.includes('RichText')) {
-         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New **rich** text"');
-         wasFixed = true;
-       } else if (pathParts.includes('EmbeddedLink')) {
-         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "Click here to learn more"');
-         wasFixed = true;
-       }
-    } else if (error.message.includes('name is required') || error.message.includes('field name')) {
-      fixedJson = fixedJson.replace(/"name":\s*""/g, '"name": "field_name"');
-      wasFixed = true;
-    } else if (error.message.includes('title is required') || error.message.includes('title to')) {
-      fixedJson = fixedJson.replace(/"title":\s*""/g, '"title": "Button Text"');
-      wasFixed = true;
-    } else if (error.message.includes('label is required') || error.message.includes('label to')) {
-      fixedJson = fixedJson.replace(/"label":\s*""/g, '"label": "Label"');
-      wasFixed = true;
-    } else if (error.message.includes('src is required') || error.message.includes('select an image')) {
-      fixedJson = fixedJson.replace(/"src":\s*""/g, '"src": "https://via.placeholder.com/300x200"');
-      wasFixed = true;
-    } else if (error.message.includes('on_click_action') || error.message.includes('what happens when')) {
-      // Add basic on_click_action for buttons
-      const onClickActionRegex = /"on_click_action":\s*null/g;
-      if (onClickActionRegex.test(fixedJson)) {
-        fixedJson = fixedJson.replace(onClickActionRegex, '"on_click_action": {"name": "complete"}');
+    // Auto-fix logic moved to individual property changes below
+    console.log('Attempting to fix error:', error);
         wasFixed = true;
       }
     }
