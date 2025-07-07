@@ -1,24 +1,12 @@
-const handleErrorFix = (error: any) => {
-     let fixedJson = jsonText;
-     let wasFixed = false;
- 
-     if (error.message.includes('text is required') || error.message.includes('Please add text')) {
-       const pathParts = error.path.split('/');
-       if (pathParts.includes('TextHeading')) {
-         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New Headline"');
-         wasFixed = true;
-       } else if (pathParts.includes('TextBody')) {
-    // Auto-fix logic moved to individual property changes below
-    console.log('Attempting to fix error:', error);
-        wasFixed = true;
-      }
+const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      handleCancelEditingTitle();
     }
+  };
 
-    if (wasFixed) {
-      return fixedJson;
-    }
-    return null;
-}
+  // Find component including nested components
 
 export function InspectorPanel() {
                       onClick={() => {
