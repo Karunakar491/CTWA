@@ -1,0 +1,43 @@
+@@ .. @@
+/* React Flow styling improvements */
+.react-flow__node {
+  cursor: default;
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* Drag and drop styling */
+.dnd-dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+/* Component palette styling */
+.component-palette-item {
+  transition: all 0.2s ease;
+}
+
+.component-palette-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dialog overlay fixes */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+.dialog-overlay {
+  z-index: 9998 !important;
+}
+
+/* Ensure modals appear above everything */
+[data-state="open"][data-radix-dialog-overlay] {
+  z-index: 9998 !important;
+}
+
+[data-state="open"][data-radix-dialog-content] {
+  z-index: 9999 !important;
+}
