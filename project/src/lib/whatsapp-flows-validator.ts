@@ -292,6 +292,19 @@ const getUserFriendlyErrorMessage = (error: any): string => {
     return 'There\'s a formatting error in your flow. Please check the JSON structure.';
   }
   
+  // Enhanced error messages for better UX
+  if (message?.includes('must not have fewer than')) {
+    return 'This component needs more content. Please add the required items.';
+  }
+  
+  if (message?.includes('must match pattern')) {
+    return 'The format is incorrect. Please check the required format.';
+  }
+  
+  if (message?.includes('must be equal to one of the allowed values')) {
+    return 'Please select a valid option from the allowed values.';
+  }
+  
   // Fallback to original message
   return message || 'Please check this field';
 };
@@ -312,7 +325,7 @@ export class WhatsAppFlowsValidator {
       properties: {
         version: {
           type: "string",
-          enum: ["5.0"]
+          enum: ["5.0", "7.0", "7.1"]
         },
         data_api_version: {
           type: "string",

@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import ReactFlow, {
   Node,
   Edge,
@@ -13,6 +15,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ScreenNode } from './ScreenNode';
+import { Plus, Eye } from 'lucide-react';
 import { useFlowStore } from '@/store/flowStore';
 
 const nodeTypes = {
@@ -20,7 +23,7 @@ const nodeTypes = {
 };
 
 export function FlowCanvas() {
-  const { flowData, addNewScreen } = useFlowStore();
+  const { flowData, addNewScreen, setActiveScreenId, activeScreenId } = useFlowStore();
   
   // Create nodes from screens
   const initialNodes: Node[] = flowData.screens.map((screen, index) => ({
@@ -62,18 +65,53 @@ export function FlowCanvas() {
     setNodes(nds => [...nds, newNode]);
   };
 
+  const handleScreenSelect = (screenId: string) => {
+    setActiveScreenId(screenId);
+    // Find the node and center it in view
+    const targetNode = nodes.find(node => node.data.screenId === screenId);
+    if (targetNode) {
+      // You could implement smooth scrolling to the node here
+      console.log('Centering screen:', screenId, targetNode.position);
+    }
+  };
   return (
     <div 
       ref={setNodeRef}
       className="h-full relative bg-gray-50"
     >
-      <div className="absolute top-4 left-4 z-10 space-x-2">
-        <button
+      <div className="absolute top-4 left-4 z-10 flex items-center space-x-3 bg-white rounded-lg shadow-md p-2 border border-gray-200">
+        <Button
+          size="sm"
+          variant="outline"
           onClick={handleAddScreen}
-          className="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          + Add Screen
-        </button>
+          <Plus className="h-4 w-4 mr-1" />
+          Add Screen
+        </Button>
+        
+        {flowData.screens.length > 1 && (
+          <div className="flex items-center space-x-2">
+            <Eye className="h-4 w-4 text-gray-500" />
+            <Select
+              value={activeScreenId || ''}
+              onValueChange={handleScreenSelect}
+            >
+              <SelectTrigger className="w-48 h-8 text-sm">
+                <SelectValue placeholder="Navigate to screen..." />
+              </SelectTrigger>
+              <SelectContent>
+                {flowData.screens.map((screen, index) => (
+                  <SelectItem key={screen.id} value={screen.id}>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{screen.title}</span>
+                      <span className="text-xs text-gray-500 ml-2">Screen {index + 1}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       
       <ReactFlow

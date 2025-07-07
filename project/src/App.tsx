@@ -3,6 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { Dashboard } from '@/components/Dashboard';
 import { FlowsStudio } from '@/components/FlowsStudio';
 import { FlowBuilder } from '@/components/FlowBuilder';
+import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
       <div className="h-full">
         {renderContent()}
       </div>
+      <Toaster />
     </AppLayout>
   );
 }

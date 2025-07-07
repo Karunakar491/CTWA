@@ -117,6 +117,20 @@
   background-color: #3b82f6 !important;
 }
 
+/* Sidebar overlay animations */
+.sidebar-overlay {
+  backdrop-filter: blur(1px);
+}
+/* Smooth sidebar transitions */
+.sidebar-container {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar hover effects */
+.sidebar-container:hover {
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
 /* React Flow styling improvements */
 .react-flow__node {
   cursor: default;
@@ -140,4 +154,47 @@
 .component-palette-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* VS Code-like console styling */
+.console-log-entry {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.console-log-entry:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* API Console scrollbar styling */
+.api-console::-webkit-scrollbar {
+  width: 8px;
+}
+
+.api-console::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.api-console::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.api-console::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* JSON Editor enhancements */
+.monaco-editor .error-line {
+  animation: pulse-error 2s infinite;
+}
+
+@keyframes pulse-error {
+  0%, 100% { background-color: rgba(255, 0, 0, 0.1); }
+  50% { background-color: rgba(255, 0, 0, 0.2); }
+}
+
+/* Console filter buttons */
+.console-filter-active {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }

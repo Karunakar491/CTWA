@@ -4,23 +4,31 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InspectorPanel } from './flow-builder/InspectorPanel';
-import { FlowCanvas } from './flow-builder/FlowCanvas';
 import { ComponentPalette } from './flow-builder/ComponentPalette';
-import { PreviewModal } from './flow-builder/PreviewModal';
-import { JsonEditorModal } from './flow-builder/JsonEditorModal';
-import { InteractivePreviewModal } from './flow-builder/InteractivePreviewModal';
 import { Stage } from './flow-builder/Stage';
+import { StaticPreviewModal } from './flow-builder/StaticPreviewModal';
+import { InteractivePreviewModal } from './flow-builder/InteractivePreviewModal';
+import { JsonEditorModal } from './flow-builder/JsonEditorModal';
 import { useFlowStore } from '@/store/flowStore';
-import { Eye, Download, Play, Code, Edit2, Check, X } from 'lucide-react';
+import { Download, Code, Edit2, Check, X, Upload, Play, Globe, AlertTriangle, Eye } from 'lucide-react';
+import type { ApiLogEntry } from './flow-builder/JsonEditorModal';
+import { useToast } from '@/hooks/use-toast';
+import { deployFlowToMetaAPI, publishFlow } from '@/services/metaApi';
 
 export function FlowBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showStaticPreview, setShowStaticPreview] = useState(false);
   const [showInteractivePreview, setShowInteractivePreview] = useState(false);
   const [isEditingFlowName, setIsEditingFlowName] = useState(false);
   const [tempFlowName, setTempFlowName] = useState('');
-  const { flowData, addComponentToScreen, updateFlowName } = useFlowStore();
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [deployedFlowId, setDeployedFlowId] = useState<string | null>(null);
+  const [apiLogs, setApiLogs] = useState<ApiLogEntry[]>([]);
+  
+  const { flowData, addComponentToScreen, updateFlowName, validateFlow, clearApiErrors, validationErrors } = useFlowStore();
+  const { toast } = useToast();
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -69,6 +77,215 @@ export function FlowBuilder() {
   const handleCancelEditingFlowName = () => {
     setIsEditingFlowName(false);
     setTempFlowName('');
+  };
+
+  const handleDeployFlow = async () => {
+    // Check for validation errors first
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Cannot Deploy Flow",
+        description: `Please fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} before deploying.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeploying(true);
+    clearApiErrors();
+    
+    const startTime = Date.now();
+    
+    // Log the request
+    const requestLog: Omit<ApiLogEntry, 'id' | 'timestamp'> = {
+      type: 'request',
+      method: 'POST',
+      endpoint: '/flows',
+      data: {
+        name: flowData.name,
+        categories: ["OTHER"],
+        flow_json: flowData,
+        publish: true
+      }
+    };
+    
+    setApiLogs(prev => [...prev, {
+      ...requestLog,
+      id: `req_${Date.now()}`,
+      timestamp: new Date().toISOString()
+    }]);
+    
+    try {
+      const result = await deployFlowToMetaAPI(flowData.name, flowData);
+      const duration = Date.now() - startTime;
+      
+      if (result.success) {
+        // Log successful response
+        setApiLogs(prev => [...prev, {
+          id: `res_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'response',
+          status: 200,
+          statusText: 'OK',
+          data: {
+            success: true,
+            flowId: result.flowId,
+            message: result.message
+          },
+          duration
+        }]);
+        
+        setDeployedFlowId(result.flowId || null);
+        toast({
+          title: "Deployment Successful!",
+          description: `Flow "${flowData.name}" has been deployed to WhatsApp Business API.`,
+          variant: "default",
+        });
+      } else {
+        // Log error response
+        setApiLogs(prev => [...prev, {
+          id: `err_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'error',
+          status: 400,
+          statusText: 'Bad Request',
+          data: {
+            success: false,
+            message: result.message,
+            errors: result.errors
+          },
+          duration
+        }]);
+        
+        // Handle deployment errors
+        if (result.errors && result.errors.length > 0) {
+          // Pass Meta API errors to validation system for highlighting
+          validateFlow(result.errors);
+          
+          toast({
+            title: "Deployment Failed",
+            description: result.message || "Please fix the highlighted errors and try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Deployment Failed",
+            description: result.message || "Unknown error occurred during deployment.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      // Log network error
+      setApiLogs(prev => [...prev, {
+        id: `net_err_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        status: 0,
+        statusText: 'Network Error',
+        data: {
+          error: error instanceof Error ? error.message : 'Unknown network error'
+        },
+        duration
+      }]);
+      
+      console.error('Deployment error:', error);
+      toast({
+        title: "Deployment Error",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
+  const handlePublishFlow = async () => {
+    if (!deployedFlowId) {
+      toast({
+        title: "Cannot Publish",
+        description: "Please deploy the flow first before publishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPublishing(true);
+    const startTime = Date.now();
+    
+    // Log the publish request
+    setApiLogs(prev => [...prev, {
+      id: `pub_req_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      type: 'request',
+      method: 'POST',
+      endpoint: `/flows/${deployedFlowId}/publish`,
+      data: { flowId: deployedFlowId }
+    }]);
+    
+    try {
+      const success = await publishFlow(deployedFlowId);
+      const duration = Date.now() - startTime;
+      
+      if (success) {
+        // Log successful publish
+        setApiLogs(prev => [...prev, {
+          id: `pub_res_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'response',
+          status: 200,
+          statusText: 'OK',
+          data: { success: true, published: true },
+          duration
+        }]);
+        
+        toast({
+          title: "Flow Published!",
+          description: `Flow "${flowData.name}" is now live and available to users.`,
+          variant: "default",
+        });
+      } else {
+        // Log publish error
+        setApiLogs(prev => [...prev, {
+          id: `pub_err_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'error',
+          status: 400,
+          statusText: 'Bad Request',
+          data: { success: false, error: 'Failed to publish flow' },
+          duration
+        }]);
+        
+        toast({
+          title: "Publishing Failed",
+          description: "Failed to publish the flow. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      // Log network error
+      setApiLogs(prev => [...prev, {
+        id: `pub_net_err_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        status: 0,
+        statusText: 'Network Error',
+        data: { error: error instanceof Error ? error.message : 'Unknown error' },
+        duration
+      }]);
+      
+      console.error('Publishing error:', error);
+      toast({
+        title: "Publishing Error",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -127,13 +344,23 @@ export function FlowBuilder() {
           <div className="flex items-center space-x-2">
             {flowData.screens.length > 0 && (
               <>
+                {/* Validation Status Indicator */}
+                {validationErrors.length > 0 && (
+                  <div className="flex items-center space-x-1 px-2 py-1 bg-red-50 border border-red-200 rounded-md">
+                    <AlertTriangle className="h-3 w-3 text-red-600" />
+                    <span className="text-xs text-red-700 font-medium">
+                      {validationErrors.length} error{validationErrors.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
+
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setShowPreview(true)}
+                  onClick={() => setShowStaticPreview(true)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  Preview
+                  Static Preview
                 </Button>
 
                 <Button 
@@ -153,6 +380,28 @@ export function FlowBuilder() {
                   <Code className="h-4 w-4 mr-2" />
                   Edit as JSON
                 </Button>
+                
+                <Button 
+                  size="sm" 
+                  onClick={handleDeployFlow}
+                  disabled={isDeploying || validationErrors.length > 0}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {isDeploying ? "Deploying..." : "Deploy"}
+                </Button>
+                
+                {deployedFlowId && (
+                  <Button 
+                    size="sm" 
+                    onClick={handlePublishFlow}
+                    disabled={isPublishing}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    {isPublishing ? "Publishing..." : "Publish"}
+                  </Button>
+                )}
                 
                 <Button size="sm" onClick={handleExportJson}>
                   <Download className="h-4 w-4 mr-2" />
@@ -179,24 +428,24 @@ export function FlowBuilder() {
           <ResizableHandle className="w-1 bg-gray-300 hover:bg-gray-400 transition-colors" />
 
           {/* PANEL 2: Center Stage */}
-          <ResizablePanel defaultSize={55} minSize={40}>
+          <ResizablePanel defaultSize={40} minSize={30}>
             <Stage />
           </ResizablePanel>
 
           <ResizableHandle className="w-1 bg-gray-300 hover:bg-gray-400 transition-colors" />
 
           {/* PANEL 3: Right Inspector */}
-          <ResizablePanel defaultSize={20} minSize={20} maxSize={50}>
+          <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
             <div className="h-full bg-white border-l border-gray-200">
               <InspectorPanel />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
 
-        {/* Preview Modal */}
-        <PreviewModal 
-          open={showPreview} 
-          onOpenChange={setShowPreview}
+        {/* Static Preview Modal */}
+        <StaticPreviewModal 
+          open={showStaticPreview} 
+          onOpenChange={setShowStaticPreview}
         />
 
         {/* Interactive Preview Modal */}
@@ -209,6 +458,7 @@ export function FlowBuilder() {
         <JsonEditorModal
           open={showJsonEditor}
           onOpenChange={setShowJsonEditor}
+          initialApiLogs={apiLogs}
         />
 
         {/* Drag Overlay */}

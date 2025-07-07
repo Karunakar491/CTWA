@@ -52,7 +52,7 @@ export function InspectorPanel() {
 
   // Update editor decorations when validation errors change
   useEffect(() => {
-    if (editorInstance && validationErrors.length > 0) {
+    if (editorInstance) {
       updateEditorDecorations();
     }
   }, [editorInstance, validationErrors, jsonText]);
@@ -105,15 +105,39 @@ export function InspectorPanel() {
   const findLineNumberForPath = (path: string, jsonContent: string): number => {
     try {
       const lines = jsonContent.split('\n');
-      const pathParts = path.split('/').filter(p => p);
+      
+      // Handle both JSON pointer paths (/screens/0/data/1) and dot notation paths (screens.0.data.1)
+      const pathParts = path.includes('/') 
+        ? path.split('/').filter(p => p) 
+        : path.split('.').filter(p => p);
       
       if (pathParts.length > 0) {
         const lastPart = pathParts[pathParts.length - 1];
         
+        // Try to find the property name in the JSON
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
-          if (line.includes(`"${lastPart}"`) || line.includes(`'${lastPart}'`)) {
+          
+          // Look for the property name as a JSON key
+          if (line.includes(`"${lastPart}"`)) {
             return i + 1;
+          }
+          
+          // For array indices, look for the context around that index
+          if (!isNaN(parseInt(lastPart))) {
+            const parentPart = pathParts[pathParts.length - 2];
+            if (parentPart && line.includes(`"${parentPart}"`)) {
+              // Found the parent array/object, now count to find the right index
+              let arrayIndex = 0;
+              for (let j = i + 1; j < lines.length && arrayIndex <= parseInt(lastPart); j++) {
+                if (lines[j].trim().startsWith('{') || lines[j].trim().startsWith('"')) {
+                  if (arrayIndex === parseInt(lastPart)) {
+                    return j + 1;
+                  }
+                  arrayIndex++;
+                }
+              }
+            }
           }
         }
       }
@@ -233,7 +257,10 @@ export function InspectorPanel() {
     let fixedJson = jsonText;
     let wasFixed = false;
 
-    if (error.message.includes('text is required')) {
+    // Handle different types of validation errors from both internal validator and Meta API
+    const errorMessage = error.message || error.originalMessage || '';
+    
+    if (errorMessage.includes('text is required') || errorMessage.includes('text') && errorMessage.includes('required')) {
       const pathParts = error.path.split('/');
       if (pathParts.includes('TextHeading')) {
         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New Headline"');
@@ -242,11 +269,17 @@ export function InspectorPanel() {
         fixedJson = fixedJson.replace(/"text":\s*""/g, '"text": "New text content"');
         wasFixed = true;
       }
-    } else if (error.message.includes('name is required')) {
+    } else if (errorMessage.includes('name is required') || errorMessage.includes('name') && errorMessage.includes('required')) {
       fixedJson = fixedJson.replace(/"name":\s*""/g, '"name": "field_name"');
       wasFixed = true;
-    } else if (error.message.includes('title is required')) {
+    } else if (errorMessage.includes('title is required') || errorMessage.includes('title') && errorMessage.includes('required')) {
       fixedJson = fixedJson.replace(/"title":\s*""/g, '"title": "Button Text"');
+      wasFixed = true;
+    } else if (errorMessage.includes('label is required') || errorMessage.includes('label') && errorMessage.includes('required')) {
+      fixedJson = fixedJson.replace(/"label":\s*""/g, '"label": "Label Text"');
+      wasFixed = true;
+    } else if (errorMessage.includes('src is required') || errorMessage.includes('src') && errorMessage.includes('required')) {
+      fixedJson = fixedJson.replace(/"src":\s*""/g, '"src": "https://via.placeholder.com/300x200"');
       wasFixed = true;
     }
 
@@ -897,19 +930,82 @@ export function InspectorPanel() {
               </div>
 
               {/* Validation Summary for JSON */}
-              {validationErrors.length > 0 && (
-                <Alert className="border-orange-200 bg-orange-50">
-                  <Lightbulb className="h-4 w-4 text-orange-600" />
-                  <AlertDescription className="text-orange-800">
-                    <div className="font-medium">
-                      {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found
+              <div className="space-y-2">
+                {validationErrors.length > 0 && (
+                  <Alert className="border-orange-200 bg-orange-50">
+                    <Lightbulb className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-800">
+                      <div className="font-medium">
+                        {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found
+                      </div>
+                      <div className="text-sm mt-1">
+                        Red lines in the editor indicate errors. Click on them to auto-fix common issues.
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Visual Studio-style Error Panel */}
+                {validationErrors.length > 0 && (
+                  <div className="border border-red-200 rounded-lg bg-red-50 max-h-48 overflow-y-auto">
+                    <div className="p-3 border-b border-red-200 bg-red-100">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <span className="font-medium text-red-900 text-sm">
+                          Problems ({validationErrors.length})
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-sm mt-1">
-                      Red lines in the editor indicate errors. Click on them to auto-fix common issues.
+                    <div className="divide-y divide-red-200">
+                      {validationErrors.map((error, index) => (
+                        <div 
+                          key={index} 
+                          className="p-3 hover:bg-red-100 cursor-pointer transition-colors"
+                          onClick={() => {
+                            const lineNumber = findLineNumberForPath(error.path, jsonText);
+                            if (lineNumber > 0 && editorInstance) {
+                              editorInstance.revealLineInCenter(lineNumber);
+                              editorInstance.setPosition({ lineNumber, column: 1 });
+                              editorInstance.focus();
+                            }
+                          }}
+                        >
+                          <div className="flex items-start space-x-2">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <div className="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">!</span>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-red-900">
+                                {error.message}
+                              </div>
+                              <div className="text-xs text-red-700 mt-1">
+                                Path: {error.path}
+                              </div>
+                              <div className="text-xs text-red-600 mt-1">
+                                Line {findLineNumberForPath(error.path, jsonText)}
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 hover:bg-red-200"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleErrorFix(error);
+                              }}
+                              title="Auto-fix this error"
+                            >
+                              <Zap className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                  </div>
+                )}
+              </div>
 
               {/* Save Button */}
               <div className="flex justify-end">

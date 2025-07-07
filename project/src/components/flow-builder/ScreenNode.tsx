@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useFlowStore, FlowComponent } from '@/store/flowStore';
 import { Card } from '@/components/ui/card';
@@ -18,7 +19,9 @@ import {
   X,
   Wifi,
   Battery,
-  Signal
+  Signal,
+  Edit2,
+  Check
 } from 'lucide-react';
 
 interface ScreenNodeProps {
@@ -34,20 +37,48 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
     selectedElementId, 
     setSelectedElementId, 
     componentErrorStatus,
-    removeComponentFromForm
+    removeComponentFromForm,
+    updateScreenTitle
   } = useFlowStore();
+  
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState('');
   
   const screen = flowData.screens.find(s => s.id === data.screenId);
 
   if (!screen) return null;
 
+  const handleStartEditingTitle = () => {
+    setTempTitle(screen.title);
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = () => {
+    if (tempTitle.trim()) {
+      updateScreenTitle(screen.id, tempTitle.trim());
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleCancelEditingTitle = () => {
+    setIsEditingTitle(false);
+    setTempTitle('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      handleCancelEditingTitle();
+    }
+  };
   const renderComponent = (component: FlowComponent, isNested = false): React.ReactNode => {
     const isSelected = selectedElementId === component.id;
     const hasError = componentErrorStatus.has(component.id);
     
-    const baseClasses = `cursor-pointer transition-all duration-200 ${
+    const baseClasses = `cursor-pointer transition-all duration-300 border-2 ${
       isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-    } ${hasError ? 'border-red-300 bg-red-50' : ''} ${
+    } ${hasError ? 'border-red-500 bg-red-50 shadow-red-200 shadow-lg animate-pulse border-dashed' : 'border-transparent'} ${
       isNested ? 'ml-4 border-l-2 border-gray-200 pl-3' : ''
     }`;
 
@@ -61,7 +92,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         return (
           <div
             key={component.id}
-            className={`p-3 rounded border-2 border-dashed ${baseClasses}`}
+            className={`p-3 rounded ${baseClasses} ${!hasError ? 'border-dashed border-gray-300 hover:border-gray-400' : 'hover:border-red-600'}`}
             onClick={handleClick}
           >
             {component.src ? (
@@ -85,7 +116,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         return (
           <div
             key={component.id}
-            className={`p-2 rounded ${baseClasses}`}
+            className={`p-2 rounded ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}
             onClick={handleClick}
           >
             <div className="flex justify-center">
@@ -109,7 +140,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         return (
           <div
             key={component.id}
-            className={`p-3 rounded space-y-2 ${baseClasses}`}
+            className={`p-3 rounded space-y-2 ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}
             onClick={handleClick}
           >
             {component.label && (
@@ -140,7 +171,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         return (
           <div
             key={component.id}
-            className={`p-3 rounded space-y-2 ${baseClasses}`}
+            className={`p-3 rounded space-y-2 ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}
             onClick={handleClick}
           >
             {component.label && (
@@ -170,7 +201,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         return (
           <div
             key={component.id}
-            className={`p-4 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 space-y-3 ${baseClasses}`}
+            className={`p-4 rounded-lg border-2 border-dashed ${hasError ? 'border-red-400 bg-red-50' : 'border-blue-300 bg-blue-50'} space-y-3 ${baseClasses}`}
             onClick={handleClick}
           >
             <div className="flex items-center justify-between">
@@ -179,6 +210,11 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
                 <span className="font-medium text-sm text-blue-900">
                   Form: {component.name || 'Unnamed'}
                 </span>
+                {hasError && (
+                  <Badge variant="destructive" className="text-xs">
+                    Error
+                  </Badge>
+                )}
               </div>
               <Badge variant="outline" className="text-xs bg-white">
                 {component.children?.length || 0} components
@@ -403,11 +439,12 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         return (
           <div
             key={component.id}
-            className={`p-3 rounded bg-gray-100 ${baseClasses}`}
+            className={`p-3 rounded ${hasError ? 'bg-red-100' : 'bg-gray-100'} ${baseClasses} ${!hasError ? 'hover:bg-gray-200' : 'hover:bg-red-200'}`}
             onClick={handleClick}
           >
             <span className="text-sm text-gray-600">
               {component.type}
+              {hasError && <span className="text-red-600 ml-2">⚠️</span>}
             </span>
           </div>
         );
@@ -436,9 +473,39 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Smartphone className="w-4 h-4 text-gray-600" />
-            <span className="font-medium text-sm text-gray-900">
-              {screen.title}
-            </span>
+            {isEditingTitle ? (
+              <div className="flex items-center space-x-1">
+                <Input
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="text-sm font-medium h-6 px-2 py-0 border-blue-300 focus:border-blue-500"
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSaveTitle}
+                  className="h-5 w-5 p-0"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 group">
+                <span className="font-medium text-sm text-gray-900">
+                  {screen.title}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleStartEditingTitle}
+                  className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Edit2 className="h-2 w-2" />
+                </Button>
+              </div>
+            )}
           </div>
           <Badge variant="outline" className="text-xs">
             {screen.id}

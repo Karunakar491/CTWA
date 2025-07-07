@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useFlowStore } from '@/store/flowStore';
 import { FlowCanvas } from './FlowCanvas';
 import { Card } from '@/components/ui/card';
@@ -5,9 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Smartphone, Plus } from 'lucide-react';
 
 export function Stage() {
-  const { flowData, addNewScreen } = useFlowStore();
+  const { flowData, addNewScreen, addComponentToScreen } = useFlowStore();
   
-  // If no screens exist at all
+  // Auto-create default screen with heading and footer when no screens exist
+  useEffect(() => {
+    if (flowData.screens.length === 0) {
+      // Create the first screen
+      const newScreen = addNewScreen();
+      
+      // Add a text heading component
+      addComponentToScreen(newScreen.id, 'TextHeading');
+      
+      // Add a footer component
+      addComponentToScreen(newScreen.id, 'Footer');
+    }
+  }, [flowData.screens.length, addNewScreen, addComponentToScreen]);
+  
+  // If no screens exist at all (shouldn't happen due to useEffect above, but safety check)
   if (flowData.screens.length === 0) {
     return (
       <div className="h-full bg-gray-50 flex items-center justify-center">

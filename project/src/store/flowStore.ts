@@ -1,7 +1,10 @@
+// src/store/flowStore.ts
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { getComponentDefaultProperties, whatsappFlowsValidator, ComponentType } from '@/lib/whatsapp-flows-validator';
+import { getComponentDefaultProperties, whatsappFlowsValidator, ComponentType, ValidationError } from '@/lib/whatsapp-flows-validator';
 
+// --- TYPE DEFINITIONS ---
 export interface FlowComponent {
   id: string;
   type: ComponentType;
@@ -63,9 +66,9 @@ export interface FlowComponent {
 export interface FlowScreen {
   id: string;
   title: string;
-  data: FlowComponent[];
   terminal?: boolean;
   success?: boolean;
+  data: FlowComponent[];
   layout?: {
     type: "SingleColumnLayout";
     children: string[];
@@ -77,43 +80,40 @@ export interface FlowScreen {
 
 export interface FlowData {
   version: string;
-  name: string;
   data_api_version?: string;
+  name: string;
+  routing_model?: Record<string, string[]>;
   screens: FlowScreen[];
-  routing_model?: Record<string, string>;
 }
 
-interface FlowStore {
+interface FlowState {
   flowData: FlowData;
   selectedElementId: string | null;
   activeScreenId: string | null;
-  validationErrors: any[];
+  validationErrors: ValidationError[];
   componentErrorStatus: Map<string, boolean>;
-  
-  // Actions
+  deployedFlowId: string | null;
+}
+
+interface FlowActions {
   setFlowData: (data: FlowData) => void;
   updateFlowName: (name: string) => void;
   setSelectedElementId: (id: string | null) => void;
   setActiveScreenId: (id: string | null) => void;
   updateComponentProperty: (elementId: string, property: string, value: any) => void;
+  updateScreenProperty: (screenId: string, property: string, value: any) => void;
   addComponentOption: (elementId: string) => void;
   removeComponentOption: (elementId: string, optionId: string) => void;
-  validateFlow: () => void;
+  validateFlow: (externalErrors?: ValidationError[]) => void;
+  clearApiErrors: () => void;
   addNewScreen: () => FlowScreen;
-  addComponentToScreen: (screenId: string, componentType: ComponentType) => void;
+  addComponentToScreen: (screenId: string, componentType: ComponentType) => FlowComponent;
   addChildComponentToForm: (formId: string, componentType: ComponentType) => void;
   removeComponentFromForm: (formId: string, childId: string) => void;
   deleteScreen: (screenId: string) => void;
   updateScreenTitle: (screenId: string, title: string) => void;
+  setDeployedFlowId: (id: string | null) => void;
 }
-
-// Start with completely empty flow
-const initialFlowData: FlowData = {
-  version: "5.0",
-  data_api_version: "3.0",
-  name: "Untitled Flow",
-  screens: []
-};
 
 // Helper function to find component by ID (including nested components)
 const findComponentById = (components: FlowComponent[], id: string): FlowComponent | null => {
@@ -144,15 +144,65 @@ const updateComponentById = (components: FlowComponent[], id: string, property: 
   return false;
 };
 
-export const useFlowStore = create<FlowStore>()(
+// Start with completely empty flow
+const initialFlowData: FlowData = {
+  version: "7.1",
+  data_api_version: "3.0",
+  name: "My New WhatsApp Flow",
+  routing_model: {},
+  screens: []
+};
+
+export const useFlowStore = create<FlowState & FlowActions>()(
   devtools(
     (set, get) => ({
+      // --- INITIAL STATE ---
       flowData: initialFlowData,
       selectedElementId: null,
       activeScreenId: null,
       validationErrors: [],
       componentErrorStatus: new Map(),
+      deployedFlowId: null,
 
+      // --- ACTIONS ---
+
+      validateFlow: (externalErrors = []) => {
+        const state = get();
+        const { errors } = whatsappFlowsValidator.validate(state.flowData);
+        
+        // Merge internal validation errors with external errors (e.g., from Meta API)
+        const allErrors = [...errors, ...externalErrors];
+        
+        // Create error status map for quick lookup
+        const errorStatus = new Map<string, boolean>();
+        allErrors.forEach(error => {
+          // Extract component ID from path if possible
+          const pathParts = error.path.split('/');
+          const dataIndex = pathParts.findIndex(part => part === 'data');
+          if (dataIndex !== -1 && pathParts[dataIndex + 1]) {
+            const screenIndex = parseInt(pathParts[pathParts.indexOf('screens') + 1]);
+            const componentIndex = parseInt(pathParts[dataIndex + 1]);
+            
+            if (!isNaN(screenIndex) && !isNaN(componentIndex)) {
+              const screen = state.flowData.screens[screenIndex];
+              const component = screen?.data[componentIndex];
+              if (component) {
+                errorStatus.set(component.id, true);
+              }
+            }
+          }
+        });
+        
+        set({ 
+          validationErrors: allErrors,
+          componentErrorStatus: errorStatus
+        });
+      },
+
+      clearApiErrors: () => {
+        // Re-run validation with only internal errors (no external errors)
+        get().validateFlow([]);
+      },
       setFlowData: (data) => {
         set({ flowData: data });
         get().validateFlow();
@@ -181,6 +231,21 @@ export const useFlowStore = create<FlowStore>()(
           if (updateComponentById(screen.data, elementId, property, value)) {
             break;
           }
+        }
+        
+        set({ flowData: newFlowData });
+        get().validateFlow();
+      },
+
+      // --- NEW ACTION IMPLEMENTATION ---
+      updateScreenProperty: (screenId, property, value) => {
+        const state = get();
+        const newFlowData = { ...state.flowData };
+        
+        // Find the screen by ID and update the property
+        const screen = newFlowData.screens.find(s => s.id === screenId);
+        if (screen) {
+          (screen as any)[property] = value;
         }
         
         set({ flowData: newFlowData });
@@ -224,10 +289,11 @@ export const useFlowStore = create<FlowStore>()(
       addNewScreen: () => {
         const state = get();
         const screenCount = state.flowData.screens.length;
-        const newScreenId = `SCREEN_${screenCount + 1}`;
+        const newScreenId = `screen_${Date.now()}`;
         const newScreen: FlowScreen = {
           id: newScreenId,
           title: `Screen ${screenCount + 1}`,
+          terminal: false,
           data: []
         };
         
@@ -286,6 +352,9 @@ export const useFlowStore = create<FlowStore>()(
         
         set({ flowData: newFlowData });
         get().validateFlow();
+        
+        // Return the new component for the script executor
+        return screen?.data[screen.data.length - 1] as FlowComponent;
       },
 
       addChildComponentToForm: (formId, componentType) => {
@@ -321,35 +390,7 @@ export const useFlowStore = create<FlowStore>()(
         set({ flowData: newFlowData });
       },
 
-      validateFlow: () => {
-        const state = get();
-        const { errors } = whatsappFlowsValidator.validate(state.flowData);
-        
-        // Create error status map for quick lookup
-        const errorStatus = new Map<string, boolean>();
-        errors.forEach(error => {
-          // Extract component ID from path if possible
-          const pathParts = error.path.split('/');
-          const dataIndex = pathParts.findIndex(part => part === 'data');
-          if (dataIndex !== -1 && pathParts[dataIndex + 1]) {
-            const screenIndex = parseInt(pathParts[pathParts.indexOf('screens') + 1]);
-            const componentIndex = parseInt(pathParts[dataIndex + 1]);
-            
-            if (!isNaN(screenIndex) && !isNaN(componentIndex)) {
-              const screen = state.flowData.screens[screenIndex];
-              const component = screen?.data[componentIndex];
-              if (component) {
-                errorStatus.set(component.id, true);
-              }
-            }
-          }
-        });
-        
-        set({ 
-          validationErrors: errors,
-          componentErrorStatus: errorStatus
-        });
-      }
+      setDeployedFlowId: (id) => set({ deployedFlowId: id }),
     }),
     { name: 'flow-store' }
   )
