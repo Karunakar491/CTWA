@@ -15,3 +15,4 @@ export function StaticPreviewModal({ open, onOpenChange }: StaticPreviewModalPro
   const currentScreenIndex = flowData.screens.findIndex(s => s.id === currentScreenId);
   const canGoNext = currentScreenIndex < flowData.screens.length - 1;
   const canGoPrevious = currentScreenIndex > 0;
+}
