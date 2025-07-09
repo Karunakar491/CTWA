@@ -7,8 +7,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InspectorPanel } from './flow-builder/InspectorPanel';
 import { ComponentPalette } from './flow-builder/ComponentPalette';
 import { Stage } from './flow-builder/Stage';
+import { DataExchangeModal } from './flow-builder/DataExchangeModal';
 import { useFlowStore } from '@/store/flowStore';
-import { Download, Code, Edit2, Check, X, Upload, Globe, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Download, Code, Edit2, Check, X, Upload, Globe, AlertTriangle, CheckCircle, Server } from 'lucide-react';
 import type { ApiLogEntry } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 import { deployFlowToMetaAPI, publishFlow } from '@/services/metaApi';
@@ -22,6 +23,7 @@ export function FlowBuilder() {
   const [deployedFlowId, setDeployedFlowId] = useState<string | null>(null);
   const [apiLogs, setApiLogs] = useState<ApiLogEntry[]>([]);
   const [inspectorTab, setInspectorTab] = useState<'properties' | 'json'>('properties');
+  const [showDataExchange, setShowDataExchange] = useState(false);
   
   const { 
     flowData, 
@@ -346,6 +348,14 @@ export function FlowBuilder() {
   const errorCount = validationErrors.filter(e => e.severity === 'error').length;
   const warningCount = validationErrors.filter(e => e.severity === 'warning').length;
 
+  const addApiLog = (entry: Omit<ApiLogEntry, 'id' | 'timestamp'>) => {
+    const newEntry: ApiLogEntry = {
+      ...entry,
+      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString()
+    };
+    setApiLogs(prev => [...prev, newEntry]);
+  };
   return (
     <DndContext 
       sensors={sensors}
@@ -406,46 +416,17 @@ export function FlowBuilder() {
           <div className="flex items-center space-x-2">
             {flowData.screens.length > 0 && (
               <>
-                {/* Enhanced Validation Status Indicator */}
-                {errorCount > 0 && (
-                  <Alert className="p-2 border-red-200 bg-red-50 w-auto">
-                    <AlertTriangle className="h-3 w-3 text-red-600" />
-                    <AlertDescription className="text-xs text-red-700 font-medium ml-1">
-                      {errorCount} error{errorCount !== 1 ? 's' : ''}
-                      {warningCount > 0 && `, ${warningCount} warning${warningCount !== 1 ? 's' : ''}`}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {errorCount === 0 && warningCount > 0 && (
-                  <Alert className="p-2 border-orange-200 bg-orange-50 w-auto">
-                    <AlertTriangle className="h-3 w-3 text-orange-600" />
-                    <AlertDescription className="text-xs text-orange-700 font-medium ml-1">
-                      {warningCount} warning{warningCount !== 1 ? 's' : ''}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {errorCount === 0 && warningCount === 0 && (
-                  <Alert className="p-2 border-green-200 bg-green-50 w-auto">
-                    <CheckCircle className="h-3 w-3 text-green-600" />
-                    <AlertDescription className="text-xs text-green-700 font-medium ml-1">
-                      Flow is valid
-                    </AlertDescription>
-                  </Alert>
-                )}
-
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setInspectorTab('json')}
+                  onClick={() => setShowDataExchange(true)}
                 >
-                  <Code className="h-4 w-4 mr-2" />
-                  Edit as JSON
+                  <Server className="h-4 w-4 mr-2" />
+                  Data Exchange
                 </Button>
-                
+
                 <Button 
-                  size="sm" 
+                  size="sm"
                   onClick={handleDeployFlow}
                   disabled={isDeploying || errorCount > 0}
                   className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
@@ -518,7 +499,7 @@ export function FlowBuilder() {
           {/* PANEL 3: Right Inspector */}
           <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
             <div className="h-full bg-white border-l border-gray-200">
-              <InspectorPanel activeTab={inspectorTab} apiLogs={apiLogs} />
+              <InspectorPanel activeTab={inspectorTab} />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -536,6 +517,14 @@ export function FlowBuilder() {
             </div>
           ) : null}
         </DragOverlay>
+
+        {/* Data Exchange Modal */}
+        <DataExchangeModal
+          open={showDataExchange}
+          onOpenChange={setShowDataExchange}
+          apiLogs={apiLogs}
+          onAddApiLog={addApiLog}
+        />
       </div>
     </DndContext>
   );

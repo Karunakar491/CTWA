@@ -472,14 +472,22 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         if (screen) {
           // Use centralized component defaults
           const newComponent = getComponentDefaultProperties(componentType);
-          screen.data.push(newComponent);
+          
+          // Find if there's a Footer component and insert before it
+          const footerIndex = screen.data.findIndex(c => c.type === 'Footer');
+          if (footerIndex !== -1) {
+            screen.data.splice(footerIndex, 0, newComponent);
+          } else {
+            screen.data.push(newComponent);
+          }
         }
         
         set({ flowData: newFlowData });
         get().validateFlow();
         
         // Return the new component for the script executor
-        return screen?.data[screen.data.length - 1] as FlowComponent;
+        const componentIndex = screen?.data.findIndex(c => c.id === newComponent.id) ?? -1;
+        return screen?.data[componentIndex] as FlowComponent;
       },
 
       removeComponentFromScreen: (screenId, componentId) => {

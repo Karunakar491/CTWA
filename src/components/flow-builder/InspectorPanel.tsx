@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { useFlowStore } from '@/store/flowStore';
 import { ImageUploader } from './ImageUploader';
-import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap, Globe, Wifi, Terminal, ChevronDown, ChevronRight, Clock, Save } from 'lucide-react';
+import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap, CheckCircle } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +24,11 @@ interface InspectorPanelProps {
 }
 
 let editorStylesAdded = false;
+
+interface InspectorPanelProps {
+  activeTab?: 'properties' | 'json';
+  apiLogs?: any[];
+}
 
 export function InspectorPanel({ activeTab = 'properties', apiLogs = [] }: InspectorPanelProps) {
   const { 
@@ -48,6 +52,12 @@ export function InspectorPanel({ activeTab = 'properties', apiLogs = [] }: Inspe
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editorInstance, setEditorInstance] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [currentTab, setCurrentTab] = useState(activeTab);
+
+  // Update current tab when prop changes
+  useEffect(() => {
+    setCurrentTab(activeTab);
+  }, [activeTab]);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
@@ -1001,19 +1011,59 @@ export function InspectorPanel({ activeTab = 'properties', apiLogs = [] }: Inspe
 
   return (
     <div className="h-full flex flex-col">
+      {/* Header with validation status */}
+      <div className="p-4 border-b bg-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <h2 className="font-semibold text-gray-900">Inspector</h2>
+            
+            {/* Flow validity indicator */}
+            <div className="flex items-center space-x-2">
+              {validationErrors.filter(e => e.severity === 'error').length === 0 ? (
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs text-green-700 font-medium">Valid</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-red-700 font-medium">
+                    {validationErrors.filter(e => e.severity === 'error').length} Error{validationErrors.filter(e => e.severity === 'error').length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant={currentTab === 'properties' ? 'default' : 'outline'}
+              onClick={() => setCurrentTab('properties')}
+              className="h-7 px-3 text-xs"
+            >
+              Properties
+            </Button>
+            <Button
+              size="sm"
+              variant={currentTab === 'json' ? 'default' : 'outline'}
+              onClick={() => setCurrentTab('json')}
+              className="h-7 px-3 text-xs"
+            >
+              JSON
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} className="h-full flex flex-col p-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="properties">Properties</TabsTrigger>
-            <TabsTrigger value="json">JSON Editor</TabsTrigger>
-            <TabsTrigger value="dataExchange">Data Exchange</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="properties" className="flex-1 overflow-y-auto mt-0">
+        {currentTab === 'properties' ? (
+          <div className="flex-1 overflow-y-auto">
             {renderPropertiesForm()}
-          </TabsContent>
-          
-          <TabsContent value="json" className="flex-1 overflow-hidden mt-0">
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4">
             <ResizablePanelGroup direction="vertical" className="h-full">
               {/* JSON Editor Panel */}
               <ResizablePanel defaultSize={70} minSize={40}>
@@ -1523,8 +1573,8 @@ export function InspectorPanel({ activeTab = 'properties', apiLogs = [] }: Inspe
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </div>
   );
