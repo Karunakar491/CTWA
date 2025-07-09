@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+// Added missing imports for Resizable components
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap, Globe, Wifi, Activity, Shield, Send } from 'lucide-react';
 import { useFlowStore } from '@/store/flowStore';
 import { ImageUploader } from './ImageUploader';
@@ -23,12 +25,14 @@ import type { ApiLogEntry } from '@/types/api';
 
 let editorStylesAdded = false;
 
-interface InspectorPanelProps {
+// Renamed props interface for consistency
+interface ScreenNodeProps {
   activeTab?: 'properties' | 'json' | 'dataExchange';
   apiLogs?: ApiLogEntry[];
 }
 
-export function InspectorPanel({ activeTab = 'properties', apiLogs: initialApiLogs = [] }: InspectorPanelProps) {
+// Renamed component from InspectorPanel to ScreenNode
+export function ScreenNode({ activeTab = 'properties', apiLogs: initialApiLogs = [] }: ScreenNodeProps) {
   const { 
     flowData, 
     setFlowData,
