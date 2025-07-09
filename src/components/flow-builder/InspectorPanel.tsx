@@ -12,16 +12,44 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { useFlowStore } from '@/store/flowStore';
 import { ImageUploader } from './ImageUploader';
-import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap, ChevronDown, ChevronRight } from 'lucide-react';
+import { ApiLogEntry } from '@/types/api';
+import { 
+  Plus, 
+  X, 
+  AlertCircle, 
+  Calendar, 
+  Image as ImageIcon, 
+  Settings, 
+  Trash2, 
+  Info, 
+  Copy, 
+  Check, 
+  Download, 
+  RotateCcw, 
+  Lightbulb, 
+  Zap, 
+  ChevronDown, 
+  ChevronRight,
+  Terminal,
+  Globe,
+  Clock,
+  FileText
+} from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { useToast } from '@/hooks/use-toast';
 
 let editorStylesAdded = false;
 
-export function InspectorPanel() {
+interface InspectorPanelProps {
+  activeTab?: 'properties' | 'json';
+  apiLogs?: ApiLogEntry[];
+}
+
+export function InspectorPanel({ activeTab = 'properties', apiLogs: initialApiLogs = [] }: InspectorPanelProps) {
   const { 
     flowData, 
     setFlowData,
@@ -44,8 +72,21 @@ export function InspectorPanel() {
   const [copied, setCopied] = useState(false);
   const [editorInstance, setEditorInstance] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
 
+  // API Console state
+  const [apiLogs, setApiLogs] = useState<ApiLogEntry[]>(initialApiLogs);
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [consoleFilter, setConsoleFilter] = useState<'all' | 'request' | 'response' | 'error'>('all');
+
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic']));
+
+  // Tab state
+  const [currentTab, setCurrentTab] = useState(activeTab);
+
+  // Update tab when prop changes
+  useEffect(() => {
+    setCurrentTab(activeTab);
+  }, [activeTab]);
 
   // Update JSON text when flow data changes
   useEffect(() => {
@@ -62,6 +103,56 @@ export function InspectorPanel() {
     }
   }, [editorInstance, validationErrors, jsonText]);
 
+  // API Console functions
+  const addApiLog = (entry: Omit<ApiLogEntry, 'id' | 'timestamp'>) => {
+    const newEntry: ApiLogEntry = {
+      ...entry,
+      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString()
+    };
+    setApiLogs(prev => [...prev, newEntry]);
+  };
+
+  const clearApiLogs = () => {
+    setApiLogs([]);
+    setExpandedLogs(new Set());
+  };
+
+  const toggleLogExpansion = (logId: string) => {
+    setExpandedLogs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(logId)) {
+        newSet.delete(logId);
+      } else {
+        newSet.add(logId);
+      }
+      return newSet;
+    });
+  };
+
+  const getFilteredLogs = () => {
+    if (consoleFilter === 'all') return apiLogs;
+    return apiLogs.filter(log => log.type === consoleFilter);
+  };
+
+  const getLogTypeIcon = (type: string) => {
+    switch (type) {
+      case 'request': return <Globe className="w-3 h-3 text-blue-600" />;
+      case 'response': return <Check className="w-3 h-3 text-green-600" />;
+      case 'error': return <AlertCircle className="w-3 h-3 text-red-600" />;
+      default: return <Info className="w-3 h-3 text-gray-600" />;
+    }
+  };
+
+  const getLogTypeColor = (type: string) => {
+    switch (type) {
+      case 'request': return 'text-blue-600 bg-blue-50';
+      case 'response': return 'text-green-600 bg-green-50';
+      case 'error': return 'text-red-600 bg-red-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
   const updateEditorDecorations = () => {
     if (!editorInstance) return;
 
@@ -75,24 +166,29 @@ export function InspectorPanel() {
       const lineNumber = findLineNumberForPath(error.path, jsonText);
       
       if (lineNumber > 0) {
+        const isError = error.severity === 'error';
+        const className = isError ? 'error-line' : 'warning-line';
+        const glyphClassName = isError ? 'error-glyph' : 'warning-glyph';
+        const severity = isError ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning;
+
         decorations.push({
           range: new monaco.Range(lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber)),
           options: {
             isWholeLine: true,
-            className: 'error-line',
-            glyphMarginClassName: 'error-glyph',
+            className,
+            glyphMarginClassName: glyphClassName,
             hoverMessage: {
-              value: `**Error:** ${error.message}\n\n*Click to fix*`
+              value: `**${isError ? 'Error' : 'Warning'}:** ${error.message}\n\n*Click to auto-fix*`
             },
             minimap: {
-              color: '#ff0000',
+              color: isError ? '#ff0000' : '#ffa500',
               position: monaco.editor.MinimapPosition.Inline
             }
           }
         });
 
         markers.push({
-          severity: monaco.MarkerSeverity.Error,
+          severity,
           startLineNumber: lineNumber,
           startColumn: 1,
           endLineNumber: lineNumber,
@@ -194,8 +290,18 @@ export function InspectorPanel() {
       await navigator.clipboard.writeText(jsonText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      
+      toast({
+        title: "Copied",
+        description: "JSON copied to clipboard",
+      });
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
     }
   };
 
@@ -204,7 +310,7 @@ export function InspectorPanel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'whatsapp-flow.json';
+    a.download = `${flowData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_flow.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -222,13 +328,23 @@ export function InspectorPanel() {
           background-color: rgba(255, 0, 0, 0.1) !important;
           border-left: 3px solid #ff0000 !important;
         }
+        .warning-line {
+          background-color: rgba(255, 165, 0, 0.1) !important;
+          border-left: 3px solid #ffa500 !important;
+        }
         .error-glyph {
           background-color: #ff0000 !important;
           width: 16px !important;
           height: 16px !important;
           border-radius: 50% !important;
         }
-        .error-glyph::after {
+        .warning-glyph {
+          background-color: #ffa500 !important;
+          width: 16px !important;
+          height: 16px !important;
+          border-radius: 50% !important;
+        }
+        .error-glyph::after, .warning-glyph::after {
           content: "!" !important;
           color: white !important;
           font-weight: bold !important;
@@ -856,141 +972,310 @@ export function InspectorPanel() {
     );
   };
 
+  const errorCount = validationErrors.filter(e => e.severity === 'error').length;
+  const warningCount = validationErrors.filter(e => e.severity === 'warning').length;
+  const filteredLogs = getFilteredLogs();
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-hidden">
-        <Tabs defaultValue="properties" className="h-full flex flex-col p-4">
+        <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as 'properties' | 'json')} className="h-full flex flex-col p-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="properties">Properties</TabsTrigger>
-            <TabsTrigger value="json">JSON</TabsTrigger>
+            <TabsTrigger value="json">JSON Editor</TabsTrigger>
           </TabsList>
           
           <TabsContent value="properties" className="flex-1 overflow-y-auto mt-0">
             {renderPropertiesForm()}
           </TabsContent>
           
-          <TabsContent value="json" className="flex-1 overflow-y-auto mt-0 p-4">
-            <div className="space-y-4">
-              {/* JSON Editor Toolbar */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    {jsonError ? (
-                      <div className="flex items-center text-red-600">
-                        <AlertCircle className="w-4 h-4 mr-1" />
-                        <span className="text-xs">Syntax Error</span>
+          <TabsContent value="json" className="flex-1 overflow-hidden mt-0">
+            <ResizablePanelGroup direction="vertical" className="h-full">
+              {/* Top Panel - JSON Editor */}
+              <ResizablePanel defaultSize={70} minSize={40}>
+                <div className="h-full flex flex-col">
+                  {/* JSON Editor Toolbar */}
+                  <div className="p-4 border-b bg-white">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          {jsonError ? (
+                            <div className="flex items-center text-red-600">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              <span className="text-xs">Syntax Error</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-green-600">
+                              <Check className="w-4 h-4 mr-1" />
+                              <span className="text-xs">Valid JSON</span>
+                            </div>
+                          )}
+                          
+                          {hasUnsavedChanges && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                              Unsaved
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {errorCount === 0 && warningCount === 0 ? (
+                            <>
+                              <Check className="w-4 h-4 text-green-600" />
+                              <span className="text-xs font-medium text-green-700">
+                                Flow Valid
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-4 h-4 text-red-600" />
+                              <span className="text-xs font-medium text-red-700">
+                                {errorCount} Error{errorCount !== 1 ? 's' : ''}
+                                {warningCount > 0 && `, ${warningCount} Warning${warningCount !== 1 ? 's' : ''}`}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCopyToClipboard}
+                          className="h-7 px-2"
+                          title="Copy to clipboard"
+                        >
+                          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleExportJson}
+                          className="h-7 px-2"
+                          title="Export JSON"
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleJsonReset}
+                          className="h-7 px-2"
+                          title="Reset changes"
+                          disabled={!hasUnsavedChanges}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Error Display */}
+                    {jsonError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          {jsonError}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+
+                  {/* JSON Editor */}
+                  <div className="flex-1 border rounded-lg overflow-hidden">
+                    <Editor
+                      height="100%"
+                      language="json"
+                      value={jsonText}
+                      onChange={handleJsonChange}
+                      onMount={handleEditorMount}
+                      theme="vs-light"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 12,
+                        lineNumbers: 'on',
+                        wordWrap: 'on',
+                        formatOnPaste: true,
+                        formatOnType: true,
+                        automaticLayout: true,
+                        scrollBeyondLastLine: false,
+                        folding: true,
+                        bracketPairColorization: { enabled: true },
+                        guides: {
+                          bracketPairs: true,
+                          indentation: true
+                        },
+                        padding: { top: 16, bottom: 16 },
+                        glyphMargin: true,
+                        lightbulb: {
+                          enabled: true
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="p-4 border-t bg-white">
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleJsonSave}
+                        disabled={!!jsonError || !hasUnsavedChanges}
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle />
+
+              {/* Bottom Panel - API Console */}
+              <ResizablePanel defaultSize={30} minSize={20}>
+                <div className="h-full bg-gray-900 text-gray-100 flex flex-col">
+                  {/* Console Header */}
+                  <div className="p-3 border-b border-gray-700 bg-gray-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Terminal className="w-4 h-4 text-green-400" />
+                        <span className="font-medium text-sm">API Console</span>
+                        <Badge variant="outline" className="text-xs bg-gray-700 border-gray-600 text-gray-300">
+                          {filteredLogs.length} entries
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {/* Filter buttons */}
+                        <div className="flex items-center space-x-1">
+                          {(['all', 'request', 'response', 'error'] as const).map((filter) => (
+                            <Button
+                              key={filter}
+                              size="sm"
+                              variant={consoleFilter === filter ? "default" : "ghost"}
+                              className={`h-6 px-2 text-xs ${
+                                consoleFilter === filter 
+                                  ? "bg-blue-600 text-white" 
+                                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                              }`}
+                              onClick={() => setConsoleFilter(filter)}
+                            >
+                              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                            </Button>
+                          ))}
+                        </div>
+                        
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={clearApiLogs}
+                          className="h-6 w-6 p-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                          title="Clear console"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Console Content */}
+                  <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {filteredLogs.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Terminal className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No API logs yet</p>
+                        <p className="text-xs mt-1">Deploy or test your flow to see API interactions</p>
                       </div>
                     ) : (
-                      <div className="flex items-center text-green-600">
-                        <Check className="w-4 h-4 mr-1" />
-                        <span className="text-xs">Valid JSON</span>
-                      </div>
-                    )}
-                    
-                    {hasUnsavedChanges && (
-                      <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
-                        Unsaved
-                      </Badge>
+                      filteredLogs.map((log) => (
+                        <div key={log.id} className="border border-gray-700 rounded bg-gray-800">
+                          {/* Log Header */}
+                          <div 
+                            className="p-2 cursor-pointer hover:bg-gray-750 transition-colors"
+                            onClick={() => toggleLogExpansion(log.id)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                {getLogTypeIcon(log.type)}
+                                <span className={`text-xs font-medium px-2 py-1 rounded ${getLogTypeColor(log.type)}`}>
+                                  {log.type.toUpperCase()}
+                                </span>
+                                {log.method && (
+                                  <span className="text-xs font-mono text-blue-400">
+                                    {log.method}
+                                  </span>
+                                )}
+                                {log.endpoint && (
+                                  <span className="text-xs font-mono text-gray-400 truncate">
+                                    {log.endpoint}
+                                  </span>
+                                )}
+                                {log.status && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs ${
+                                      log.status >= 200 && log.status < 300 
+                                        ? 'border-green-500 text-green-400' 
+                                        : 'border-red-500 text-red-400'
+                                    }`}
+                                  >
+                                    {log.status}
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                  {log.duration && <span>({log.duration}ms)</span>}
+                                </div>
+                                {expandedLogs.has(log.id) ? (
+                                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Log Details */}
+                          {expandedLogs.has(log.id) && (
+                            <div className="border-t border-gray-700 p-3 bg-gray-850">
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium text-gray-400">Response Data</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-5 w-5 p-0 text-gray-400 hover:text-gray-200"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(JSON.stringify(log.data, null, 2));
+                                      toast({ title: "Copied", description: "Log data copied to clipboard" });
+                                    }}
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                                <pre className="text-xs bg-gray-900 p-2 rounded border border-gray-600 overflow-x-auto">
+                                  <code className="text-gray-300">
+                                    {JSON.stringify(log.data, null, 2)}
+                                  </code>
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyToClipboard}
-                    className="h-7 px-2"
-                    title="Copy to clipboard"
-                  >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleExportJson}
-                    className="h-7 px-2"
-                    title="Export JSON"
-                  >
-                    <Download className="w-3 h-3" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleJsonReset}
-                    className="h-7 px-2"
-                    title="Reset changes"
-                    disabled={!hasUnsavedChanges}
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Error Display */}
-              {jsonError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    {jsonError}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* JSON Editor */}
-              <div className="border rounded-lg overflow-hidden">
-                <Editor
-                  height="400px"
-                  language="json"
-                  value={jsonText}
-                  onChange={handleJsonChange}
-                  onMount={handleEditorMount}
-                  theme="vs-light"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 12,
-                    lineNumbers: 'on',
-                    wordWrap: 'on',
-                    formatOnPaste: true,
-                    formatOnType: true,
-                    automaticLayout: true,
-                    scrollBeyondLastLine: false,
-                    folding: true,
-                    bracketPairColorization: { enabled: true },
-                    guides: {
-                      bracketPairs: true,
-                      indentation: true
-                    },
-                    padding: { top: 16, bottom: 16 },
-                    glyphMargin: true,
-                    lightbulb: {
-                      enabled: true
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Save Button */}
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleJsonSave}
-                  disabled={!!jsonError || !hasUnsavedChanges}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  Save Changes
-                </Button>
-              </div>
-
-              {/* Info */}
-              <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium mb-1">Complete WhatsApp Flow JSON</p>
-                <p>This shows the entire flow structure. Make changes carefully and save to update the flow.</p>
-              </div>
-            </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </TabsContent>
         </Tabs>
       </div>

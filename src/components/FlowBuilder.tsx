@@ -7,22 +7,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InspectorPanel } from './flow-builder/InspectorPanel';
 import { ComponentPalette } from './flow-builder/ComponentPalette';
 import { Stage } from './flow-builder/Stage';
-import { JsonEditorModal } from './flow-builder/JsonEditorModal';
 import { useFlowStore } from '@/store/flowStore';
 import { Download, Code, Edit2, Check, X, Upload, Globe, AlertTriangle, CheckCircle } from 'lucide-react';
-import type { ApiLogEntry } from './flow-builder/JsonEditorModal';
+import type { ApiLogEntry } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 import { deployFlowToMetaAPI, publishFlow } from '@/services/metaApi';
 
 export function FlowBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [isEditingFlowName, setIsEditingFlowName] = useState(false);
   const [tempFlowName, setTempFlowName] = useState('');
   const [isDeploying, setIsDeploying] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [deployedFlowId, setDeployedFlowId] = useState<string | null>(null);
   const [apiLogs, setApiLogs] = useState<ApiLogEntry[]>([]);
+  const [inspectorTab, setInspectorTab] = useState<'properties' | 'json'>('properties');
   
   const { 
     flowData, 
@@ -428,7 +427,7 @@ export function FlowBuilder() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setShowJsonEditor(true)}
+                  onClick={() => setInspectorTab('json')}
                 >
                   <Code className="h-4 w-4 mr-2" />
                   Edit as JSON
@@ -508,17 +507,10 @@ export function FlowBuilder() {
           {/* PANEL 3: Right Inspector */}
           <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
             <div className="h-full bg-white border-l border-gray-200">
-              <InspectorPanel />
+              <InspectorPanel activeTab={inspectorTab} apiLogs={apiLogs} />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
-
-        {/* JSON Editor Modal */}
-        <JsonEditorModal
-          open={showJsonEditor}
-          onOpenChange={setShowJsonEditor}
-          initialApiLogs={apiLogs}
-        />
 
         {/* Enhanced Drag Overlay */}
         <DragOverlay>
