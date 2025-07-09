@@ -15,10 +15,6 @@ import {
   Calendar
 } from "lucide-react";
 
-interface DashboardProps {
-  onCreateFlow: () => void;
-}
-
 // Mock data
 const kpiData = [
   {
@@ -98,7 +94,7 @@ const recentFlows = [
   }
 ];
 
-export function Dashboard({ onCreateFlow }: DashboardProps) {
+export function Dashboard() {
   return (
     <div className="flex-1 bg-slate-50">
       {/* Header */}
@@ -114,8 +110,8 @@ export function Dashboard({ onCreateFlow }: DashboardProps) {
               Last 30 days
             </Button>
             <Button size="sm">
-              <PlusCircle className="h-4 w-4 mr-2" onClick={onCreateFlow} />
-              Create Flow
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New Campaign
             </Button>
           </div>
         </div>
@@ -150,14 +146,14 @@ export function Dashboard({ onCreateFlow }: DashboardProps) {
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow duration-200 group" onClick={onCreateFlow}>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow duration-200 group">
               <CardHeader className="text-center pb-4">
                 <div className="mx-auto p-3 bg-blue-100 rounded-full w-fit group-hover:bg-blue-200 transition-colors">
                   <PlusCircle className="h-6 w-6 text-blue-600" />
                 </div>
-                <CardTitle className="text-lg">Create New Flow</CardTitle>
+                <CardTitle className="text-lg">Create New Campaign</CardTitle>
                 <CardDescription>
-                  Build a new WhatsApp conversation flow from scratch
+                  Launch a new WhatsApp marketing campaign with custom flows
                 </CardDescription>
               </CardHeader>
             </Card>

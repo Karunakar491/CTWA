@@ -1,57 +1,37 @@
 import { useState } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensors, useSensor, PointerSensor, KeyboardSensor } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InspectorPanel } from './flow-builder/InspectorPanel';
 import { ComponentPalette } from './flow-builder/ComponentPalette';
 import { Stage } from './flow-builder/Stage';
-import { DataExchangeModal } from './flow-builder/DataExchangeModal';
+import { StaticPreviewModal } from './flow-builder/StaticPreviewModal';
+import { InteractivePreviewModal } from './flow-builder/InteractivePreviewModal';
+import { JsonEditorModal } from './flow-builder/JsonEditorModal';
 import { useFlowStore } from '@/store/flowStore';
-import { Download, Code, Edit2, Check, X, Upload, Globe, AlertTriangle, CheckCircle, Server } from 'lucide-react';
-import type { ApiLogEntry } from '@/types/api';
+import { Download, Code, Edit2, Check, X, Upload, Play, Globe, AlertTriangle, Eye } from 'lucide-react';
+import type { ApiLogEntry } from './flow-builder/JsonEditorModal';
 import { useToast } from '@/hooks/use-toast';
 import { deployFlowToMetaAPI, publishFlow } from '@/services/metaApi';
 
 export function FlowBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showJsonEditor, setShowJsonEditor] = useState(false);
+  const [showStaticPreview, setShowStaticPreview] = useState(false);
+  const [showInteractivePreview, setShowInteractivePreview] = useState(false);
   const [isEditingFlowName, setIsEditingFlowName] = useState(false);
   const [tempFlowName, setTempFlowName] = useState('');
   const [isDeploying, setIsDeploying] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [deployedFlowId, setDeployedFlowId] = useState<string | null>(null);
   const [apiLogs, setApiLogs] = useState<ApiLogEntry[]>([]);
-  const [inspectorTab, setInspectorTab] = useState<'properties' | 'json'>('properties');
-  const [showDataExchange, setShowDataExchange] = useState(false);
   
-  const { 
-    flowData, 
-    addComponentToScreen, 
-    updateFlowName, 
-    validateFlow, 
-    clearApiErrors, 
-    validationErrors,
-    reorderComponentsInScreen
-  } = useFlowStore();
+  const { flowData, addComponentToScreen, updateFlowName, validateFlow, clearApiErrors, validationErrors } = useFlowStore();
   const { toast } = useToast();
-
-  // Configure sensors for drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor)
-  );
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    // Handle drag over for better visual feedback
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -59,46 +39,10 @@ export function FlowBuilder() {
     
     if (over && active.data.current?.type === 'component') {
       const componentType = active.data.current.componentType;
-      
-      // Check if dropping on a screen drop area
-      if (over.id && typeof over.id === 'string' && over.id.startsWith('screen-drop-area-')) {
-        const screenId = over.id.replace('screen-drop-area-', '');
-        addComponentToScreen(screenId, componentType);
-        
-        toast({
-          title: "Component Added",
-          description: `${componentType} added to screen successfully.`,
-        });
-      }
-      // Check if dropping on the general canvas (add to first screen for backward compatibility)
-      else if (over.id === 'flow-canvas' && flowData.screens.length > 0) {
+      // TODO: Determine target screen based on drop location
+      // Currently adds to the first screen for simplicity
+      if (flowData.screens.length > 0) {
         addComponentToScreen(flowData.screens[0].id, componentType);
-        
-        toast({
-          title: "Component Added",
-          description: `${componentType} added to first screen.`,
-        });
-      }
-    }
-    // Handle component reordering within screens
-    else if (active.id !== over?.id && over?.id) {
-      // Find which screen contains these components
-      for (const screen of flowData.screens) {
-        const activeComponent = screen.data.find(c => c.id === active.id);
-        const overComponent = screen.data.find(c => c.id === over.id);
-        
-        if (activeComponent && overComponent) {
-          const componentIds = screen.data.map(c => c.id);
-          const oldIndex = componentIds.indexOf(active.id as string);
-          const newIndex = componentIds.indexOf(over.id as string);
-          
-          const newOrder = [...componentIds];
-          const [removed] = newOrder.splice(oldIndex, 1);
-          newOrder.splice(newIndex, 0, removed);
-          
-          reorderComponentsInScreen(screen.id, newOrder);
-          break;
-        }
       }
     }
     
@@ -111,7 +55,7 @@ export function FlowBuilder() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${flowData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_flow.json`;
+    a.download = 'whatsapp-flow.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -137,11 +81,10 @@ export function FlowBuilder() {
 
   const handleDeployFlow = async () => {
     // Check for validation errors first
-    const errorCount = validationErrors.filter(e => e.severity === 'error').length;
-    if (errorCount > 0) {
+    if (validationErrors.length > 0) {
       toast({
         title: "Cannot Deploy Flow",
-        description: `Please fix ${errorCount} validation error${errorCount !== 1 ? 's' : ''} before deploying.`,
+        description: `Please fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} before deploying.`,
         variant: "destructive",
       });
       return;
@@ -345,25 +288,10 @@ export function FlowBuilder() {
     }
   };
 
-  const errorCount = validationErrors.filter(e => e.severity === 'error').length;
-  const warningCount = validationErrors.filter(e => e.severity === 'warning').length;
-
-  const addApiLog = (entry: Omit<ApiLogEntry, 'id' | 'timestamp'>) => {
-    const newEntry: ApiLogEntry = {
-      ...entry,
-      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString()
-    };
-    setApiLogs(prev => [...prev, newEntry]);
-  };
   return (
-    <DndContext 
-      sensors={sensors}
-      onDragStart={handleDragStart} 
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex-1 bg-slate-50 flow-builder-container">
-        {/* Enhanced Header */}
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex-1 bg-slate-50 h-screen overflow-hidden">
+        {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {isEditingFlowName ? (
@@ -416,32 +344,51 @@ export function FlowBuilder() {
           <div className="flex items-center space-x-2">
             {flowData.screens.length > 0 && (
               <>
+                {/* Validation Status Indicator */}
+                {validationErrors.length > 0 && (
+                  <div className="flex items-center space-x-1 px-2 py-1 bg-red-50 border border-red-200 rounded-md">
+                    <AlertTriangle className="h-3 w-3 text-red-600" />
+                    <span className="text-xs text-red-700 font-medium">
+                      {validationErrors.length} error{validationErrors.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
+
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setShowDataExchange(true)}
+                  onClick={() => setShowStaticPreview(true)}
                 >
-                  <Server className="h-4 w-4 mr-2" />
-                  Data Exchange
+                  <Eye className="h-4 w-4 mr-2" />
+                  Static Preview
                 </Button>
 
                 <Button 
+                  variant="outline" 
                   size="sm"
-                  onClick={handleDeployFlow}
-                  disabled={isDeploying || errorCount > 0}
-                  className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                  onClick={() => setShowInteractivePreview(true)}
                 >
-                  {isDeploying ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      Deploying...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Deploy
-                    </>
-                  )}
+                  <Play className="h-4 w-4 mr-2" />
+                  Interactive Preview
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowJsonEditor(true)}
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Edit as JSON
+                </Button>
+                
+                <Button 
+                  size="sm" 
+                  onClick={handleDeployFlow}
+                  disabled={isDeploying || validationErrors.length > 0}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {isDeploying ? "Deploying..." : "Deploy"}
                 </Button>
                 
                 {deployedFlowId && (
@@ -451,17 +398,8 @@ export function FlowBuilder() {
                     disabled={isPublishing}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {isPublishing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Globe className="h-4 w-4 mr-2" />
-                        Publish
-                      </>
-                    )}
+                    <Globe className="h-4 w-4 mr-2" />
+                    {isPublishing ? "Publishing..." : "Publish"}
                   </Button>
                 )}
                 
@@ -499,32 +437,40 @@ export function FlowBuilder() {
           {/* PANEL 3: Right Inspector */}
           <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
             <div className="h-full bg-white border-l border-gray-200">
-              <InspectorPanel activeTab={inspectorTab} />
+              <InspectorPanel />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
 
-        {/* Enhanced Drag Overlay */}
+        {/* Static Preview Modal */}
+        <StaticPreviewModal 
+          open={showStaticPreview} 
+          onOpenChange={setShowStaticPreview}
+        />
+
+        {/* Interactive Preview Modal */}
+        <InteractivePreviewModal 
+          open={showInteractivePreview} 
+          onOpenChange={setShowInteractivePreview}
+        />
+
+        {/* JSON Editor Modal */}
+        <JsonEditorModal
+          open={showJsonEditor}
+          onOpenChange={setShowJsonEditor}
+          initialApiLogs={apiLogs}
+        />
+
+        {/* Drag Overlay */}
         <DragOverlay>
           {activeId ? (
-            <div className="p-3 bg-white border-2 border-blue-300 rounded-lg shadow-xl opacity-90 transform rotate-3">
+            <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-lg opacity-90">
               <div className="font-medium text-sm text-gray-900">
                 {activeId.replace('palette-', '').replace(/([A-Z])/g, ' $1').trim()}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Drop on a screen to add
               </div>
             </div>
           ) : null}
         </DragOverlay>
-
-        {/* Data Exchange Modal */}
-        <DataExchangeModal
-          open={showDataExchange}
-          onOpenChange={setShowDataExchange}
-          apiLogs={apiLogs}
-          onAddApiLog={addApiLog}
-        />
       </div>
     </DndContext>
   );
