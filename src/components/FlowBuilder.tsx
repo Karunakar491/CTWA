@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensors, useSensor, PointerSensor, KeyboardSensor } from '@dnd-kit/core';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,16 @@ export function FlowBuilder() {
     reorderComponentsInScreen
   } = useFlowStore();
   const { toast } = useToast();
+
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -338,6 +348,7 @@ export function FlowBuilder() {
 
   return (
     <DndContext 
+      sensors={sensors}
       onDragStart={handleDragStart} 
       onDragEnd={handleDragEnd}
     >
