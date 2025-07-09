@@ -480,14 +480,17 @@ export const useFlowStore = create<FlowState & FlowActions>()(
           } else {
             screen.data.push(newComponent);
           }
+          
+          set({ flowData: newFlowData });
+          get().validateFlow();
+          
+          // Return the new component for the script executor
+          const componentIndex = screen.data.findIndex(c => c.id === newComponent.id);
+          return screen.data[componentIndex] as FlowComponent;
         }
         
-        set({ flowData: newFlowData });
-        get().validateFlow();
-        
-        // Return the new component for the script executor
-        const componentIndex = screen?.data.findIndex(c => c.id === newComponent.id) ?? -1;
-        return screen?.data[componentIndex] as FlowComponent;
+        // Return null if screen not found
+        return null as any;
       },
 
       removeComponentFromScreen: (screenId, componentId) => {
