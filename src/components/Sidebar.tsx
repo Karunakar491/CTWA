@@ -17,13 +17,14 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   collapsed?: boolean;
   activeItem: string;
-  onItemClick: (item: 'dashboard' | 'flowLibrary' | 'reports' | 'flowBuilder') => void;
+  onItemClick: (item: 'dashboard' | 'flows' | 'flowLibrary' | 'reports' | 'flowBuilder') => void;
   onToggleCollapse?: () => void;
 }
 
 export function Sidebar({ collapsed = false, activeItem, onItemClick, onToggleCollapse }: SidebarProps) {
   const navigationItems = [
     { name: "Dashboard", id: "dashboard", icon: Home },
+    { name: "Flows", id: "flows", icon: Workflow },
     { name: "Flow Library", id: "flowLibrary", icon: FileText },
     { name: "Reports", id: "reports", icon: BarChart3 },
   ];

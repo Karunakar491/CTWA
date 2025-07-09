@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { Dashboard } from '@/components/Dashboard';
-import { FlowLibrary } from '@/components/FlowLibrary';
+import { FlowsStudio } from '@/components/FlowsStudio';
 import { FlowBuilder } from '@/components/FlowBuilder';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Toaster } from '@/components/ui/toaster';
@@ -9,7 +9,7 @@ import { useFlowStore } from '@/store/flowStore';
 import { getFlowById } from '@/services/metaApi';
 import { Construction, FileText, BarChart3 } from 'lucide-react';
 
-type ActiveView = 'dashboard' | 'flowLibrary' | 'reports' | 'flowBuilder';
+type ActiveView = 'dashboard' | 'flows' | 'flowLibrary' | 'reports' | 'flowBuilder';
 
 function App() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
@@ -57,8 +57,30 @@ function App() {
     switch (activeView) {
       case 'dashboard':
         return <Dashboard onCreateFlow={handleCreateFlow} />;
+      case 'flows':
+        return <FlowsStudio onCreateFlow={handleCreateFlow} onEditFlow={handleEditFlow} />;
       case 'flowLibrary':
-        return <FlowLibrary onCreateFlow={handleCreateFlow} onEditFlow={handleEditFlow} />;
+        return (
+          <div className="flex-1 bg-slate-50 flex items-center justify-center">
+            <Card className="max-w-md text-center">
+              <CardHeader>
+                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <FileText className="w-8 h-8 text-blue-600" />
+                </div>
+                <CardTitle>Flow Library</CardTitle>
+                <CardDescription>
+                  Browse and manage your flow templates and library
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center space-x-2 text-orange-600 bg-orange-50 p-3 rounded-lg">
+                  <Construction className="w-4 h-4" />
+                  <span className="text-sm font-medium">Coming Soon</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
       case 'reports':
         return (
           <div className="flex-1 bg-slate-50 flex items-center justify-center">

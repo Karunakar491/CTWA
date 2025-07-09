@@ -157,216 +157,35 @@ export async function getFlowById(flowId: string): Promise<any> {
     // Simulate fetching flow data
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Return mock flow data based on template ID
-    const flowTemplates: Record<string, any> = {
-      ecom_onboarding: {
-        version: "7.1",
-        data_api_version: "3.0",
-        name: "E-commerce Welcome & Onboarding",
-        routing_model: {},
-        screens: [
-          {
-            id: "welcome_screen",
-            title: "Welcome to Our Store",
-            terminal: false,
-            data: [
-              {
-                id: "welcome_heading",
-                type: "TextHeading",
-                text: "Welcome to Our Store! 🛍️"
-              },
-              {
-                id: "welcome_body",
-                type: "TextBody",
-                text: "We're excited to help you discover amazing products tailored just for you. Let's get started with a quick setup!"
-              },
-              {
-                id: "store_image",
-                type: "Image",
-                src: "https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=800",
-                alt_text: "Welcome to our store"
-              },
-              {
-                id: "continue_button",
-                type: "Footer",
-                label: "Get Started",
-                on_click_action: {
-                  name: "navigate",
-                  next: { type: "screen", name: "preferences_screen" }
-                }
+    // Return mock flow data based on ID
+    const mockFlowData = {
+      version: "7.1",
+      data_api_version: "3.0",
+      name: `Flow ${flowId}`,
+      routing_model: {},
+      screens: [
+        {
+          id: `screen_${Date.now()}`,
+          title: "Welcome Screen",
+          terminal: false,
+          data: [
+            {
+              id: `heading_${Date.now()}`,
+              type: "TextHeading",
+              text: "Welcome to our service!"
+            },
+            {
+              id: `footer_${Date.now()}`,
+              type: "Footer",
+              label: "Get Started",
+              on_click_action: {
+                name: "complete"
               }
-            ]
-          },
-          {
-            id: "preferences_screen",
-            title: "Your Preferences",
-            terminal: false,
-            data: [
-              {
-                id: "preferences_heading",
-                type: "TextHeading",
-                text: "Tell Us Your Preferences"
-              },
-              {
-                id: "category_selection",
-                type: "CheckboxGroup",
-                name: "preferred_categories",
-                label: "Which product categories interest you?",
-                data_source: [
-                  { id: "electronics", title: "Electronics" },
-                  { id: "fashion", title: "Fashion & Clothing" },
-                  { id: "home", title: "Home & Garden" },
-                  { id: "sports", title: "Sports & Outdoors" },
-                  { id: "books", title: "Books & Media" }
-                ]
-              },
-              {
-                id: "complete_setup",
-                type: "Footer",
-                label: "Complete Setup",
-                on_click_action: {
-                  name: "complete"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      loan_application: {
-        version: "7.1",
-        data_api_version: "3.0",
-        name: "Personal Loan Application",
-        routing_model: {},
-        screens: [
-          {
-            id: "loan_intro",
-            title: "Loan Application",
-            terminal: false,
-            data: [
-              {
-                id: "loan_heading",
-                type: "TextHeading",
-                text: "Personal Loan Application"
-              },
-              {
-                id: "loan_description",
-                type: "TextBody",
-                text: "Apply for a personal loan with competitive rates and quick approval. The process takes just a few minutes."
-              },
-              {
-                id: "loan_amount",
-                type: "TextInput",
-                name: "loan_amount",
-                label: "Desired loan amount ($)",
-                input_type: "number"
-              },
-              {
-                id: "loan_purpose",
-                type: "Dropdown",
-                name: "loan_purpose",
-                label: "Purpose of loan",
-                data_source: [
-                  { id: "home_improvement", title: "Home Improvement" },
-                  { id: "debt_consolidation", title: "Debt Consolidation" },
-                  { id: "education", title: "Education" },
-                  { id: "medical", title: "Medical Expenses" },
-                  { id: "other", title: "Other" }
-                ]
-              },
-              {
-                id: "continue_application",
-                type: "Footer",
-                label: "Continue Application",
-                on_click_action: {
-                  name: "navigate",
-                  next: { type: "screen", name: "personal_info" }
-                }
-              }
-            ]
-          },
-          {
-            id: "personal_info",
-            title: "Personal Information",
-            terminal: false,
-            data: [
-              {
-                id: "personal_heading",
-                type: "TextHeading",
-                text: "Personal Information"
-              },
-              {
-                id: "personal_form",
-                type: "Form",
-                name: "personal_details",
-                children: [
-                  {
-                    id: "full_name",
-                    type: "TextInput",
-                    name: "full_name",
-                    label: "Full Name",
-                    required: true
-                  },
-                  {
-                    id: "email",
-                    type: "TextInput",
-                    name: "email",
-                    label: "Email Address",
-                    input_type: "email",
-                    required: true
-                  },
-                  {
-                    id: "phone",
-                    type: "TextInput",
-                    name: "phone",
-                    label: "Phone Number",
-                    required: true
-                  },
-                  {
-                    id: "annual_income",
-                    type: "TextInput",
-                    name: "annual_income",
-                    label: "Annual Income ($)",
-                    input_type: "number",
-                    required: true
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      // Add more template flows as needed
-      default: {
-        version: "7.1",
-        data_api_version: "3.0",
-        name: `Template Flow`,
-        routing_model: {},
-        screens: [
-          {
-            id: `screen_${Date.now()}`,
-            title: "Welcome Screen",
-            terminal: false,
-            data: [
-              {
-                id: `heading_${Date.now()}`,
-                type: "TextHeading",
-                text: "Welcome to our service!"
-              },
-              {
-                id: `footer_${Date.now()}`,
-                type: "Footer",
-                label: "Get Started",
-                on_click_action: {
-                  name: "complete"
-                }
-              }
-            ]
-          }
-        ]
-      }
+            }
+          ]
+        }
+      ]
     };
-    
-    const mockFlowData = flowTemplates[flowId] || flowTemplates.default;
     
     console.log('Mock fetch flow:', flowId, mockFlowData);
     return mockFlowData;
