@@ -17,20 +17,16 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   collapsed?: boolean;
   activeItem: string;
-  onItemClick: (item: string) => void;
+  onItemClick: (item: 'dashboard' | 'flows' | 'flowLibrary' | 'reports') => void;
   onToggleCollapse?: () => void;
 }
 
 export function Sidebar({ collapsed = false, activeItem, onItemClick, onToggleCollapse }: SidebarProps) {
   const navigationItems = [
-    { name: "Home", icon: Home },
-    { name: "WhatsApp Business", icon: MessageSquare },
-    { name: "Dashboard", icon: BarChart3 },
-    { name: "Flows Studio", icon: Workflow },
-    { name: "Flow Builder", icon: Workflow },
-    { name: "Templates", icon: FileText },
-    { name: "Contacts", icon: Users },
-    { name: "Analytics", icon: BarChart3 },
+    { name: "Dashboard", id: "dashboard", icon: Home },
+    { name: "Flows", id: "flows", icon: Workflow },
+    { name: "Flow Library", id: "flowLibrary", icon: FileText },
+    { name: "Reports", id: "reports", icon: BarChart3 },
   ];
 
   const bottomItems = [
@@ -83,19 +79,19 @@ export function Sidebar({ collapsed = false, activeItem, onItemClick, onToggleCo
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {navigationItems.map((item) => (
           <Button
-            key={item.name}
+            key={item.id}
             variant="ghost"
             className={cn(
               "w-full font-medium transition-all duration-200 h-10",
               collapsed ? "justify-center px-2" : "justify-start text-left px-3",
               "hover:bg-gray-800 hover:text-white",
-              activeItem === item.name 
+              activeItem === item.id 
                 ? "bg-blue-600 text-white shadow-lg" 
                 : "text-gray-300 hover:text-white"
             )}
             onClick={(e) => {
               e.stopPropagation();
-              onItemClick(item.name);
+              onItemClick(item.id);
             }}
             title={collapsed ? item.name : undefined}
           >
@@ -107,25 +103,18 @@ export function Sidebar({ collapsed = false, activeItem, onItemClick, onToggleCo
 
       {/* Bottom Items */}
       <div className="px-2 py-4 space-y-1 border-t border-gray-800">
-        {bottomItems.map((item) => (
-          <Button 
-            key={item.name} 
-            variant="ghost" 
-            className={cn(
-              "w-full font-medium transition-all duration-200 h-10",
-              collapsed ? "justify-center px-2" : "justify-start text-left px-3",
-              "hover:bg-gray-800 hover:text-white text-gray-300"
-            )}
-            title={collapsed ? item.name : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              onItemClick(item.name);
-            }}
-          >
-            <item.icon className={cn("h-4 w-4 flex-shrink-0", collapsed ? "" : "mr-3")} />
-            {!collapsed && <span className="truncate">{item.name}</span>}
-          </Button>
-        ))}
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "w-full font-medium transition-all duration-200 h-10",
+            collapsed ? "justify-center px-2" : "justify-start text-left px-3",
+            "hover:bg-gray-800 hover:text-white text-gray-300"
+          )}
+          title={collapsed ? "Settings" : undefined}
+        >
+          <Settings className={cn("h-4 w-4 flex-shrink-0", collapsed ? "" : "mr-3")} />
+          {!collapsed && <span className="truncate">Settings</span>}
+        </Button>
       </div>
 
       {/* Sidebar Status Indicator - Only show when expanded */}

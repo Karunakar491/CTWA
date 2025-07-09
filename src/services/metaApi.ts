@@ -150,3 +150,47 @@ export async function deprecateFlow(flowId: string): Promise<boolean> {
     return false;
   }
 }
+
+// Mock function to get flow by ID
+export async function getFlowById(flowId: string): Promise<any> {
+  try {
+    // Simulate fetching flow data
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Return mock flow data based on ID
+    const mockFlowData = {
+      version: "7.1",
+      data_api_version: "3.0",
+      name: `Flow ${flowId}`,
+      routing_model: {},
+      screens: [
+        {
+          id: `screen_${Date.now()}`,
+          title: "Welcome Screen",
+          terminal: false,
+          data: [
+            {
+              id: `heading_${Date.now()}`,
+              type: "TextHeading",
+              text: "Welcome to our service!"
+            },
+            {
+              id: `footer_${Date.now()}`,
+              type: "Footer",
+              label: "Get Started",
+              on_click_action: {
+                name: "complete"
+              }
+            }
+          ]
+        }
+      ]
+    };
+    
+    console.log('Mock fetch flow:', flowId, mockFlowData);
+    return mockFlowData;
+  } catch (error) {
+    console.error('Error fetching flow:', error);
+    return null;
+  }
+}
