@@ -206,7 +206,7 @@ export function FlowsStudio({ onCreateFlow, onEditFlow }: FlowsStudioProps) {
               <p className="text-gray-600 mt-1">Design and manage your WhatsApp conversation flows</p>
             </div>
           </div>
-          <Button onClick={handleCreateFlow} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={onCreateFlow} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
             Create New Flow
           </Button>
