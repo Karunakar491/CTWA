@@ -7,11 +7,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InspectorPanel } from './flow-builder/InspectorPanel';
 import { ComponentPalette } from './flow-builder/ComponentPalette';
 import { Stage } from './flow-builder/Stage';
-import { StaticPreviewModal } from './flow-builder/StaticPreviewModal';
-import { InteractivePreviewModal } from './flow-builder/InteractivePreviewModal';
 import { JsonEditorModal } from './flow-builder/JsonEditorModal';
 import { useFlowStore } from '@/store/flowStore';
-import { Download, Code, Edit2, Check, X, Upload, Play, Globe, AlertTriangle, Eye, CheckCircle } from 'lucide-react';
+import { Download, Code, Edit2, Check, X, Upload, Globe, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { ApiLogEntry } from './flow-builder/JsonEditorModal';
 import { useToast } from '@/hooks/use-toast';
 import { deployFlowToMetaAPI, publishFlow } from '@/services/metaApi';
@@ -19,8 +17,6 @@ import { deployFlowToMetaAPI, publishFlow } from '@/services/metaApi';
 export function FlowBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
-  const [showStaticPreview, setShowStaticPreview] = useState(false);
-  const [showInteractivePreview, setShowInteractivePreview] = useState(false);
   const [isEditingFlowName, setIsEditingFlowName] = useState(false);
   const [tempFlowName, setTempFlowName] = useState('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -432,24 +428,6 @@ export function FlowBuilder() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setShowStaticPreview(true)}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Static Preview
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowInteractivePreview(true)}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Interactive Preview
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm"
                   onClick={() => setShowJsonEditor(true)}
                 >
                   <Code className="h-4 w-4 mr-2" />
@@ -534,18 +512,6 @@ export function FlowBuilder() {
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
-
-        {/* Static Preview Modal */}
-        <StaticPreviewModal 
-          open={showStaticPreview} 
-          onOpenChange={setShowStaticPreview}
-        />
-
-        {/* Interactive Preview Modal */}
-        <InteractivePreviewModal 
-          open={showInteractivePreview} 
-          onOpenChange={setShowInteractivePreview}
-        />
 
         {/* JSON Editor Modal */}
         <JsonEditorModal
