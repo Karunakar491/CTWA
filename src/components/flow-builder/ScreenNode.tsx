@@ -1,6 +1,8 @@
-import { memo } from 'react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position } from 'reactflow';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useFlowStore, FlowComponent } from '@/store/flowStore';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Smartphone, 
   Image as ImageIcon, 
@@ -21,80 +25,74 @@ import {
   Battery,
   Signal,
   Edit2,
-  Check
+  Check,
+  Copy,
+  Trash2,
+  GripVertical,
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 
-interface ScreenNodeProps {
-  data: {
-    screenId: string;
-    screen?: any;
-  };
+interface SortableComponentProps {
+  component: FlowComponent;
+  screenId: string;
+  isNested?: boolean;
 }
 
-export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
+function SortableComponent({ component, screenId, isNested = false }: SortableComponentProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: component.id });
+
   const { 
-    flowData, 
     selectedElementId, 
     setSelectedElementId, 
     componentErrorStatus,
-    removeComponentFromForm,
-    updateScreenTitle
+    removeComponentFromScreen,
+    removeComponentFromForm
   } = useFlowStore();
-  
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [tempTitle, setTempTitle] = useState('');
-  
-  const screen = flowData.screens.find(s => s.id === data.screenId);
 
-  if (!screen) return null;
-
-  const handleStartEditingTitle = () => {
-    setTempTitle(screen.title);
-    setIsEditingTitle(true);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
-  const handleSaveTitle = () => {
-    if (tempTitle.trim()) {
-      updateScreenTitle(screen.id, tempTitle.trim());
+  const isSelected = selectedElementId === component.id;
+  const hasError = componentErrorStatus.has(component.id);
+
+  const baseClasses = `cursor-pointer transition-all duration-300 border-2 ${
+    isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+  } ${hasError ? 'border-red-500 bg-red-50 shadow-red-200 shadow-lg animate-pulse border-dashed' : 'border-transparent'} ${
+    isNested ? 'ml-4 border-l-2 border-gray-200 pl-3' : ''
+  }`;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedElementId(component.id);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isNested) {
+      // Find parent form and remove from it
+      // This is a simplified approach - in a real app you'd pass the parent ID
+      console.log('Delete nested component:', component.id);
+    } else {
+      removeComponentFromScreen(screenId, component.id);
     }
-    setIsEditingTitle(false);
   };
 
-  const handleCancelEditingTitle = () => {
-    setIsEditingTitle(false);
-    setTempTitle('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveTitle();
-    } else if (e.key === 'Escape') {
-      handleCancelEditingTitle();
-    }
-  };
-  const renderComponent = (component: FlowComponent, isNested = false): React.ReactNode => {
-    const isSelected = selectedElementId === component.id;
-    const hasError = componentErrorStatus.has(component.id);
-    
-    const baseClasses = `cursor-pointer transition-all duration-300 border-2 ${
-      isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-    } ${hasError ? 'border-red-500 bg-red-50 shadow-red-200 shadow-lg animate-pulse border-dashed' : 'border-transparent'} ${
-      isNested ? 'ml-4 border-l-2 border-gray-200 pl-3' : ''
-    }`;
-
-    const handleClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setSelectedElementId(component.id);
-    };
-
+  const renderComponent = (): React.ReactNode => {
     switch (component.type) {
       case 'Image':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${baseClasses} ${!hasError ? 'border-dashed border-gray-300 hover:border-gray-400' : 'hover:border-red-600'}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${baseClasses} ${!hasError ? 'border-dashed border-gray-300 hover:border-gray-400' : 'hover:border-red-600'}`}>
             {component.src ? (
               <img
                 src={component.src}
@@ -114,11 +112,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'Button':
         return (
-          <div
-            key={component.id}
-            className={`p-2 rounded ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}
-            onClick={handleClick}
-          >
+          <div className={`p-2 rounded ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}>
             <div className="flex justify-center">
               <Button 
                 className="w-full font-semibold py-3 px-6 rounded-lg shadow-sm"
@@ -131,6 +125,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
             {component.on_click_action && (
               <p className="text-xs text-gray-500 text-center mt-1">
                 Action: {component.on_click_action.name}
+                {component.on_click_action.next?.name && ` → ${component.on_click_action.next.name}`}
               </p>
             )}
           </div>
@@ -138,11 +133,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'DatePicker':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded space-y-2 ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded space-y-2 ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}>
             {component.label && (
               <Label className="text-sm font-medium text-gray-900">
                 {component.label}
@@ -152,7 +143,6 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
               <Input 
                 placeholder="Select date..." 
                 className="text-sm pr-8 border-gray-300"
-                style={{ focusBorderColor: '#25D366', focusRingColor: '#25D366' }}
                 disabled
               />
               <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -169,11 +159,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'Dropdown':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded space-y-2 ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded space-y-2 ${baseClasses} ${!hasError ? 'hover:bg-gray-50' : 'hover:bg-red-100'}`}>
             {component.label && (
               <Label className="text-sm font-medium text-gray-900">
                 {component.label}
@@ -199,11 +185,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'Form':
         return (
-          <div
-            key={component.id}
-            className={`p-4 rounded-lg border-2 border-dashed ${hasError ? 'border-red-400 bg-red-50' : 'border-blue-300 bg-blue-50'} space-y-3 ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-4 rounded-lg border-2 border-dashed ${hasError ? 'border-red-400 bg-red-50' : 'border-blue-300 bg-blue-50'} space-y-3 ${baseClasses}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-blue-600" />
@@ -221,41 +203,33 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
               </Badge>
             </div>
             
-            {/* Render form children */}
-            <div className="space-y-2">
-              {component.children?.map((child) => (
-                <div key={child.id} className="relative">
-                  {renderComponent(child, true)}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeComponentFromForm(component.id, child.id);
-                    }}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
+            {/* Render form children with sortable context */}
+            {component.children && component.children.length > 0 && (
+              <SortableContext items={component.children.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {component.children.map((child) => (
+                    <SortableComponent 
+                      key={child.id} 
+                      component={child} 
+                      screenId={screenId}
+                      isNested={true}
+                    />
+                  ))}
                 </div>
-              ))}
-              
-              {(!component.children || component.children.length === 0) && (
-                <div className="text-center py-4 text-gray-500">
-                  <p className="text-xs">Empty form - add components in the inspector</p>
-                </div>
-              )}
-            </div>
+              </SortableContext>
+            )}
+            
+            {(!component.children || component.children.length === 0) && (
+              <div className="text-center py-4 text-gray-500">
+                <p className="text-xs">Empty form - add components in the inspector</p>
+              </div>
+            )}
           </div>
         );
 
       case 'TextHeading':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${baseClasses}`}>
             <h3 className="font-bold text-lg text-gray-900 leading-tight">
               {component.text || 'Headline'}
             </h3>
@@ -264,11 +238,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'TextSubheading':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${baseClasses}`}>
             <h4 className="font-semibold text-base text-gray-800 leading-snug">
               {component.text || 'Subheading'}
             </h4>
@@ -277,11 +247,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'TextBody':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${baseClasses}`}>
             <p className="text-sm text-gray-700 leading-relaxed">
               {component.text || 'Text'}
             </p>
@@ -290,11 +256,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'TextCaption':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${baseClasses}`}>
             <p className="text-xs text-gray-600 leading-relaxed">
               {component.text || 'Caption'}
             </p>
@@ -303,11 +265,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'RichText':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${baseClasses}`}>
             <div className="text-sm text-gray-700 leading-relaxed">
               {component.text || 'Rich text content'}
             </div>
@@ -316,11 +274,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'TextInput':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded space-y-2 ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded space-y-2 ${baseClasses}`}>
             {component.label && (
               <Label className="text-sm font-medium text-gray-900">
                 {component.label}
@@ -329,7 +283,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
             )}
             <Input 
               placeholder="Enter text..." 
-              className="text-sm border-gray-300 whatsapp-input"
+              className="text-sm border-gray-300"
               disabled
             />
           </div>
@@ -337,11 +291,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'TextArea':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded space-y-2 ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded space-y-2 ${baseClasses}`}>
             {component.label && (
               <Label className="text-sm font-medium text-gray-900">
                 {component.label}
@@ -359,11 +309,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'CheckboxGroup':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded space-y-3 ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded space-y-3 ${baseClasses}`}>
             {component.label && (
               <Label className="text-sm font-medium text-gray-900">
                 {component.label}
@@ -389,11 +335,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'RadioButtonsGroup':
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded space-y-3 ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded space-y-3 ${baseClasses}`}>
             {component.label && (
               <Label className="text-sm font-medium text-gray-900">
                 {component.label}
@@ -419,11 +361,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       case 'Footer':
         return (
-          <div
-            key={component.id}
-            className={`p-4 bg-gray-50 border-t rounded-b ${baseClasses}`}
-            onClick={handleClick}
-          >
+          <div className={`p-4 bg-gray-50 border-t rounded-b ${baseClasses}`}>
             <div className="flex justify-center">
               <Button 
                 className="w-full font-semibold py-3 px-6 rounded-lg shadow-sm whatsapp-button"
@@ -437,11 +375,7 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
 
       default:
         return (
-          <div
-            key={component.id}
-            className={`p-3 rounded ${hasError ? 'bg-red-100' : 'bg-gray-100'} ${baseClasses} ${!hasError ? 'hover:bg-gray-200' : 'hover:bg-red-200'}`}
-            onClick={handleClick}
-          >
+          <div className={`p-3 rounded ${hasError ? 'bg-red-100' : 'bg-gray-100'} ${baseClasses} ${!hasError ? 'hover:bg-gray-200' : 'hover:bg-red-200'}`}>
             <span className="text-sm text-gray-600">
               {component.type}
               {hasError && <span className="text-red-600 ml-2">⚠️</span>}
@@ -452,81 +386,253 @@ export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-[320px] overflow-hidden">
-      <Handle type="target" position={Position.Top} />
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      onClick={handleClick}
+      className="relative group"
+    >
+      {/* Drag handle */}
+      <div
+        {...listeners}
+        className="absolute left-1 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
+      >
+        <GripVertical className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+      </div>
+
+      {/* Delete button */}
+      <Button
+        size="sm"
+        variant="ghost"
+        className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-100 hover:text-red-600"
+        onClick={handleDelete}
+      >
+        <X className="w-3 h-3" />
+      </Button>
+
+      {renderComponent()}
+    </div>
+  );
+}
+
+interface ScreenNodeProps {
+  data: {
+    screenId: string;
+    screen?: any;
+  };
+}
+
+export const ScreenNode = memo(({ data }: ScreenNodeProps) => {
+  const { 
+    flowData, 
+    selectedElementId, 
+    setSelectedElementId, 
+    componentErrorStatus,
+    deleteScreen,
+    duplicateScreen,
+    updateScreenTitle,
+    reorderComponentsInScreen
+  } = useFlowStore();
+  
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState('');
+  
+  const screen = flowData.screens.find(s => s.id === data.screenId);
+
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: `screen-drop-area-${data.screenId}`,
+  });
+
+  if (!screen) return null;
+
+  const hasScreenError = componentErrorStatus.has(screen.id);
+
+  const handleStartEditingTitle = () => {
+    setTempTitle(screen.title);
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = () => {
+    if (tempTitle.trim()) {
+      updateScreenTitle(screen.id, tempTitle.trim());
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleCancelEditingTitle = () => {
+    setIsEditingTitle(false);
+    setTempTitle('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      handleCancelEditingTitle();
+    }
+  };
+
+  const handleDuplicateScreen = () => {
+    duplicateScreen(screen.id);
+  };
+
+  const handleDeleteScreen = () => {
+    if (flowData.screens.length > 1) {
+      deleteScreen(screen.id);
+    }
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    
+    if (active.id !== over.id) {
+      const componentIds = screen.data.map(c => c.id);
+      const oldIndex = componentIds.indexOf(active.id);
+      const newIndex = componentIds.indexOf(over.id);
       
-      {/* WhatsApp-style Header */}
-      <div className="p-3 bg-gray-50 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-1 text-xs">
-            <div className="flex space-x-1">
-              <div className="w-1 h-1 bg-gray-900 rounded-full"></div>
-              <div className="w-1 h-1 bg-gray-900 rounded-full"></div>
-              <div className="w-1 h-1 bg-gray-900 rounded-full"></div>
-            </div>
-            <Signal className="w-3 h-3 text-gray-900" />
-            <Wifi className="w-3 h-3 text-gray-900" />
-            <Battery className="w-3 h-3 text-gray-900" />
-          </div>
-          <div className="text-xs font-medium text-gray-900">9:41 AM</div>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Smartphone className="w-4 h-4 text-gray-600" />
-            {isEditingTitle ? (
-              <div className="flex items-center space-x-1">
-                <Input
-                  value={tempTitle}
-                  onChange={(e) => setTempTitle(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="text-sm font-medium h-6 px-2 py-0 border-blue-300 focus:border-blue-500"
-                  autoFocus
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleSaveTitle}
-                  className="h-5 w-5 p-0"
-                >
-                  <Check className="h-3 w-3" />
-                </Button>
+      const newOrder = [...componentIds];
+      const [removed] = newOrder.splice(oldIndex, 1);
+      newOrder.splice(newIndex, 0, removed);
+      
+      reorderComponentsInScreen(screen.id, newOrder);
+    }
+  };
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div className={`bg-white rounded-xl shadow-lg border-2 w-[320px] overflow-hidden transition-all duration-300 ${
+          hasScreenError ? 'border-red-500 shadow-red-200' : 'border-gray-200 hover:shadow-xl'
+        }`}>
+          {/* Connection Handles */}
+          <Handle 
+            type="target" 
+            position={Position.Top} 
+            style={{ background: '#25D366', width: 12, height: 12 }}
+          />
+          <Handle 
+            type="source" 
+            position={Position.Bottom} 
+            style={{ background: '#25D366', width: 12, height: 12 }}
+          />
+          <Handle 
+            type="source" 
+            position={Position.Right} 
+            style={{ background: '#25D366', width: 12, height: 12 }}
+          />
+          <Handle 
+            type="target" 
+            position={Position.Left} 
+            style={{ background: '#25D366', width: 12, height: 12 }}
+          />
+          
+          {/* WhatsApp-style Header */}
+          <div className="p-3 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-1 text-xs">
+                <div className="flex space-x-1">
+                  <div className="w-1 h-1 bg-gray-900 rounded-full"></div>
+                  <div className="w-1 h-1 bg-gray-900 rounded-full"></div>
+                  <div className="w-1 h-1 bg-gray-900 rounded-full"></div>
+                </div>
+                <Signal className="w-3 h-3 text-gray-900" />
+                <Wifi className="w-3 h-3 text-gray-900" />
+                <Battery className="w-3 h-3 text-gray-900" />
               </div>
+              <div className="text-xs font-medium text-gray-900">9:41 AM</div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Smartphone className="w-4 h-4 text-gray-600" />
+                {isEditingTitle ? (
+                  <div className="flex items-center space-x-1">
+                    <Input
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="text-sm font-medium h-6 px-2 py-0 border-blue-300 focus:border-blue-500"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSaveTitle}
+                      className="h-5 w-5 p-0"
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 group">
+                    <span className="font-medium text-sm text-gray-900">
+                      {screen.title}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleStartEditingTitle}
+                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Edit2 className="h-2 w-2" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-1">
+                <Badge variant="outline" className="text-xs">
+                  {screen.id}
+                </Badge>
+                {hasScreenError && (
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Screen Content with Drop Area */}
+          <div 
+            ref={setDroppableRef}
+            className="p-4 space-y-4 max-h-96 overflow-y-auto bg-white min-h-[200px]"
+          >
+            {screen.data.length > 0 ? (
+              <SortableContext items={screen.data.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-4">
+                  {screen.data.map(component => (
+                    <SortableComponent 
+                      key={component.id} 
+                      component={component} 
+                      screenId={screen.id}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
             ) : (
-              <div className="flex items-center space-x-1 group">
-                <span className="font-medium text-sm text-gray-900">
-                  {screen.title}
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleStartEditingTitle}
-                  className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Edit2 className="h-2 w-2" />
-                </Button>
+              <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                <Plus className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Empty screen</p>
+                <p className="text-xs">Drag components here to add them</p>
               </div>
             )}
           </div>
-          <Badge variant="outline" className="text-xs">
-            {screen.id}
-          </Badge>
         </div>
-      </div>
-
-      {/* Screen Content */}
-      <div className="p-4 space-y-4 max-h-96 overflow-y-auto bg-white">
-        {screen.data.map(component => renderComponent(component))}
-        
-        {screen.data.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">Empty screen</p>
-            <p className="text-xs">Drag components from the palette to add them</p>
-          </div>
-        )}
-      </div>
-
-      <Handle type="source" position={Position.Bottom} />
-    </div>
+      </ContextMenuTrigger>
+      
+      <ContextMenuContent>
+        <ContextMenuItem onClick={handleDuplicateScreen}>
+          <Copy className="w-4 h-4 mr-2" />
+          Duplicate Screen
+        </ContextMenuItem>
+        <ContextMenuItem 
+          onClick={handleDeleteScreen}
+          disabled={flowData.screens.length <= 1}
+          className="text-red-600 focus:text-red-600"
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete Screen
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 

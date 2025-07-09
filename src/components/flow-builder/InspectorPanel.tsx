@@ -10,9 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useFlowStore } from '@/store/flowStore';
 import { ImageUploader } from './ImageUploader';
-import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap } from 'lucide-react';
+import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap, ChevronDown, ChevronRight } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +43,9 @@ export function InspectorPanel() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editorInstance, setEditorInstance] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
+
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic']));
 
   // Update JSON text when flow data changes
   useEffect(() => {
@@ -351,6 +356,18 @@ export function InspectorPanel() {
     }
   };
 
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
+
   const renderErrorsAndFixes = () => {
     if (componentErrors.length === 0) return null;
 
@@ -463,354 +480,378 @@ export function InspectorPanel() {
         {/* Validation Errors and Fixes */}
         {renderErrorsAndFixes()}
 
-        {/* Text Content Section */}
-        {(selectedComponent.type === 'TextHeading' || 
-          selectedComponent.type === 'TextSubheading' || 
-          selectedComponent.type === 'TextBody' ||
-          selectedComponent.type === 'TextCaption' ||
-          selectedComponent.type === 'RichText' ||
-          selectedComponent.type === 'Footer') && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Text Content
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="text">Content</Label>
-                {selectedComponent.type === 'TextBody' || selectedComponent.type === 'RichText' ? (
-                  <Textarea
-                    id="text"
-                    value={selectedComponent.text || ''}
-                    onChange={(e) => handlePropertyChange('text', e.target.value)}
-                    className={hasError ? 'border-red-300' : ''}
-                    rows={4}
-                    placeholder="Enter your text content..."
-                  />
-                ) : (
-                  <Input
-                    id="text"
-                    value={selectedComponent.text || ''}
-                    onChange={(e) => handlePropertyChange('text', e.target.value)}
-                    className={hasError ? 'border-red-300' : ''}
-                    placeholder="Enter your text..."
-                  />
-                )}
-                {componentInfo.maxLength && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Character count</span>
-                    <Badge variant={textLength > componentInfo.maxLength ? "destructive" : "secondary"}>
-                      {textLength}/{componentInfo.maxLength}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Image Component */}
-        {selectedComponent.type === 'Image' && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center">
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Image Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ImageUploader 
-                componentId={selectedComponent.id}
-                currentSrc={selectedComponent.src}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Button Component */}
-        {selectedComponent.type === 'Button' && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Button Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Button Text</Label>
-                <Input
-                  id="title"
-                  value={selectedComponent.title || ''}
-                  onChange={(e) => handlePropertyChange('title', e.target.value)}
-                  className={hasError ? 'border-red-300' : ''}
-                  placeholder="Enter button text"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="action">Action</Label>
-                <Select
-                  value={selectedComponent.on_click_action?.name || ''}
-                  onValueChange={(value) => handlePropertyChange('on_click_action', { 
-                    name: value,
-                    next: value === 'navigate' ? { type: 'screen', name: '' } : undefined
-                  })}
-                >
-                  <SelectTrigger className={hasError ? 'border-red-300' : ''}>
-                    <SelectValue placeholder="Select action" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="navigate">Navigate to screen</SelectItem>
-                    <SelectItem value="complete">Submit form</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedComponent.on_click_action?.name === 'navigate' && (
-                <div className="space-y-2">
-                  <Label htmlFor="payload">Target Screen</Label>
-                  <Select
-                    value={selectedComponent.on_click_action?.next?.name || ''}
-                    onValueChange={(value) => handlePropertyChange('on_click_action', {
-                      ...selectedComponent.on_click_action,
-                      next: { type: 'screen', name: value }
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select target screen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {flowData.screens
-                        .filter(screen => screen.id !== selectedComponent.id)
-                        .map((screen) => (
-                          <SelectItem key={screen.id} value={screen.id}>
-                            {screen.title} ({screen.id})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+        {/* Collapsible Sections */}
+        <div className="space-y-4">
+          {/* Basic Properties Section */}
+          <Collapsible 
+            open={expandedSections.has('basic')} 
+            onOpenChange={() => toggleSection('basic')}
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                <div className="flex items-center space-x-2">
+                  <Settings className="w-4 h-4" />
+                  <span className="font-medium">Basic Properties</span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                {expandedSections.has('basic') ? 
+                  <ChevronDown className="w-4 h-4" /> : 
+                  <ChevronRight className="w-4 h-4" />
+                }
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <Card>
+                <CardContent className="p-4 space-y-4">
+                  {/* Text Content */}
+                  {(selectedComponent.type === 'TextHeading' || 
+                    selectedComponent.type === 'TextSubheading' || 
+                    selectedComponent.type === 'TextBody' ||
+                    selectedComponent.type === 'TextCaption' ||
+                    selectedComponent.type === 'RichText' ||
+                    selectedComponent.type === 'Footer') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="text">Content</Label>
+                      {selectedComponent.type === 'TextBody' || selectedComponent.type === 'RichText' ? (
+                        <Textarea
+                          id="text"
+                          value={selectedComponent.text || ''}
+                          onChange={(e) => handlePropertyChange('text', e.target.value)}
+                          className={hasError ? 'border-red-300' : ''}
+                          rows={4}
+                          placeholder="Enter your text content..."
+                        />
+                      ) : (
+                        <Input
+                          id="text"
+                          value={selectedComponent.text || ''}
+                          onChange={(e) => handlePropertyChange('text', e.target.value)}
+                          className={hasError ? 'border-red-300' : ''}
+                          placeholder="Enter your text..."
+                        />
+                      )}
+                      {componentInfo.maxLength && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-500">Character count</span>
+                          <Badge variant={textLength > componentInfo.maxLength ? "destructive" : "secondary"}>
+                            {textLength}/{componentInfo.maxLength}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-        {/* Input Components with data_source */}
-        {(selectedComponent.type === 'CheckboxGroup' || 
-          selectedComponent.type === 'RadioButtonsGroup' ||
-          selectedComponent.type === 'Dropdown' ||
-          selectedComponent.type === 'ChipsSelector') && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Input Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="label">Label</Label>
-                <Input
-                  id="label"
-                  value={selectedComponent.label || ''}
-                  onChange={(e) => handlePropertyChange('label', e.target.value)}
-                  className={hasError ? 'border-red-300' : ''}
-                />
-              </div>
+                  {/* Button Properties */}
+                  {selectedComponent.type === 'Button' && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Button Text</Label>
+                        <Input
+                          id="title"
+                          value={selectedComponent.title || ''}
+                          onChange={(e) => handlePropertyChange('title', e.target.value)}
+                          className={hasError ? 'border-red-300' : ''}
+                          placeholder="Enter button text"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Field Name</Label>
-                <Input
-                  id="name"
-                  value={selectedComponent.name || ''}
-                  onChange={(e) => handlePropertyChange('name', e.target.value)}
-                  placeholder="field_name"
-                />
-              </div>
+                  {/* Input Field Properties */}
+                  {(selectedComponent.type === 'TextInput' || 
+                    selectedComponent.type === 'TextArea' ||
+                    selectedComponent.type === 'CheckboxGroup' ||
+                    selectedComponent.type === 'RadioButtonsGroup' ||
+                    selectedComponent.type === 'Dropdown' ||
+                    selectedComponent.type === 'DatePicker' ||
+                    selectedComponent.type === 'OptIn' ||
+                    selectedComponent.type === 'PhotoPicker' ||
+                    selectedComponent.type === 'DocumentPicker') && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="label">Label</Label>
+                        <Input
+                          id="label"
+                          value={selectedComponent.label || ''}
+                          onChange={(e) => handlePropertyChange('label', e.target.value)}
+                          className={hasError ? 'border-red-300' : ''}
+                        />
+                      </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Options</Label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => selectedElementId && addComponentOption(selectedElementId)}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Option
-                  </Button>
-                </div>
-                
-                <div className="space-y-3">
-                  {selectedComponent.data_source?.map((option: any, index: number) => (
-                    <Card key={option.id} className="p-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Field Name</Label>
+                        <Input
+                          id="name"
+                          value={selectedComponent.name || ''}
+                          onChange={(e) => handlePropertyChange('name', e.target.value)}
+                          placeholder="field_name"
+                        />
+                      </div>
+
                       <div className="flex items-center space-x-2">
-                        <div className="flex-1">
+                        <Switch
+                          id="required"
+                          checked={selectedComponent.required || false}
+                          onCheckedChange={(checked) => handlePropertyChange('required', checked)}
+                        />
+                        <Label htmlFor="required">Required field</Label>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Advanced Properties Section */}
+          {(selectedComponent.type === 'Button' || 
+            selectedComponent.type === 'Image' ||
+            selectedComponent.type === 'DatePicker' ||
+            selectedComponent.type === 'Form') && (
+            <Collapsible 
+              open={expandedSections.has('advanced')} 
+              onOpenChange={() => toggleSection('advanced')}
+            >
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                  <div className="flex items-center space-x-2">
+                    <Settings className="w-4 h-4" />
+                    <span className="font-medium">Advanced Properties</span>
+                  </div>
+                  {expandedSections.has('advanced') ? 
+                    <ChevronDown className="w-4 h-4" /> : 
+                    <ChevronRight className="w-4 h-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    {/* Button Actions */}
+                    {selectedComponent.type === 'Button' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="action">Action</Label>
+                          <Select
+                            value={selectedComponent.on_click_action?.name || ''}
+                            onValueChange={(value) => handlePropertyChange('on_click_action', { 
+                              name: value,
+                              next: value === 'navigate' ? { type: 'screen', name: '' } : undefined
+                            })}
+                          >
+                            <SelectTrigger className={hasError ? 'border-red-300' : ''}>
+                              <SelectValue placeholder="Select action" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="navigate">Navigate to screen</SelectItem>
+                              <SelectItem value="complete">Submit form</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {selectedComponent.on_click_action?.name === 'navigate' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="payload">Target Screen</Label>
+                            <Select
+                              value={selectedComponent.on_click_action?.next?.name || ''}
+                              onValueChange={(value) => handlePropertyChange('on_click_action', {
+                                ...selectedComponent.on_click_action,
+                                next: { type: 'screen', name: value }
+                              })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select target screen" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {flowData.screens
+                                  .filter(screen => screen.id !== selectedComponent.id)
+                                  .map((screen) => (
+                                    <SelectItem key={screen.id} value={screen.id}>
+                                      {screen.title} ({screen.id})
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Image Properties */}
+                    {selectedComponent.type === 'Image' && (
+                      <ImageUploader 
+                        componentId={selectedComponent.id}
+                        currentSrc={selectedComponent.src}
+                      />
+                    )}
+
+                    {/* Date Picker Properties */}
+                    {selectedComponent.type === 'DatePicker' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="min_date">Minimum Date</Label>
                           <Input
-                            value={option.title}
-                            onChange={(e) => handleOptionChange(option.id, e.target.value)}
-                            placeholder={`Option ${index + 1}`}
-                            className="text-sm"
+                            id="min_date"
+                            type="date"
+                            value={selectedComponent.min_date || ''}
+                            onChange={(e) => handlePropertyChange('min_date', e.target.value)}
                           />
                         </div>
-                        {selectedComponent.data_source && selectedComponent.data_source.length > 1 && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => selectedElementId && removeComponentOption(selectedElementId, option.id)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="max_date">Maximum Date</Label>
+                          <Input
+                            id="max_date"
+                            type="date"
+                            value={selectedComponent.max_date || ''}
+                            onChange={(e) => handlePropertyChange('max_date', e.target.value)}
+                          />
+                        </div>
                       </div>
-                    </Card>
-                  ))}
-                </div>
-                
-                <p className="text-xs text-gray-500">
-                  {selectedComponent.type === 'Dropdown' ? 'Max 200 options' : 'Max 20 options'}, each option max 30 characters
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                    )}
 
-        {/* Other input components */}
-        {(selectedComponent.type === 'TextInput' || 
-          selectedComponent.type === 'TextArea' ||
-          selectedComponent.type === 'DatePicker' ||
-          selectedComponent.type === 'OptIn' ||
-          selectedComponent.type === 'PhotoPicker' ||
-          selectedComponent.type === 'DocumentPicker') && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Input Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="label">Label</Label>
-                <Input
-                  id="label"
-                  value={selectedComponent.label || ''}
-                  onChange={(e) => handlePropertyChange('label', e.target.value)}
-                  className={hasError ? 'border-red-300' : ''}
-                />
-              </div>
+                    {/* Form Properties */}
+                    {selectedComponent.type === 'Form' && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Form Name</Label>
+                          <Input
+                            id="name"
+                            value={selectedComponent.name || ''}
+                            onChange={(e) => handlePropertyChange('name', e.target.value)}
+                            className={hasError ? 'border-red-300' : ''}
+                            placeholder="form_name"
+                          />
+                        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Field Name</Label>
-                <Input
-                  id="name"
-                  value={selectedComponent.name || ''}
-                  onChange={(e) => handlePropertyChange('name', e.target.value)}
-                  placeholder="field_name"
-                />
-              </div>
-
-              {selectedComponent.type === 'DatePicker' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="min_date">Minimum Date</Label>
-                    <Input
-                      id="min_date"
-                      type="date"
-                      value={selectedComponent.min_date || ''}
-                      onChange={(e) => handlePropertyChange('min_date', e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="max_date">Maximum Date</Label>
-                    <Input
-                      id="max_date"
-                      type="date"
-                      value={selectedComponent.max_date || ''}
-                      onChange={(e) => handlePropertyChange('max_date', e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Form Component */}
-        {selectedComponent.type === 'Form' && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Form Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Form Name</Label>
-                <Input
-                  id="name"
-                  value={selectedComponent.name || ''}
-                  onChange={(e) => handlePropertyChange('name', e.target.value)}
-                  className={hasError ? 'border-red-300' : ''}
-                  placeholder="form_name"
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Form Components</Label>
-                  <Select onValueChange={(value) => addChildComponentToForm(selectedComponent.id, value as any)}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Add component" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="TextInput">Text Input</SelectItem>
-                      <SelectItem value="TextArea">Text Area</SelectItem>
-                      <SelectItem value="Dropdown">Dropdown</SelectItem>
-                      <SelectItem value="DatePicker">Date Picker</SelectItem>
-                      <SelectItem value="CheckboxGroup">Checkbox Group</SelectItem>
-                      <SelectItem value="RadioButtonsGroup">Radio Group</SelectItem>
-                      <SelectItem value="OptIn">Opt In</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  {selectedComponent.children?.map((child: any) => (
-                    <Card key={child.id} className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-sm">{child.type}</div>
-                          <div className="text-xs text-gray-500">
-                            {child.label || child.name || 'Unnamed component'}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label>Form Components</Label>
+                            <Select onValueChange={(value) => addChildComponentToForm(selectedComponent.id, value as any)}>
+                              <SelectTrigger className="w-40">
+                                <SelectValue placeholder="Add component" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="TextInput">Text Input</SelectItem>
+                                <SelectItem value="TextArea">Text Area</SelectItem>
+                                <SelectItem value="Dropdown">Dropdown</SelectItem>
+                                <SelectItem value="DatePicker">Date Picker</SelectItem>
+                                <SelectItem value="CheckboxGroup">Checkbox Group</SelectItem>
+                                <SelectItem value="RadioButtonsGroup">Radio Group</SelectItem>
+                                <SelectItem value="OptIn">Opt In</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {selectedComponent.children?.map((child: any) => (
+                              <Card key={child.id} className="p-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium text-sm">{child.type}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {child.label || child.name || 'Unnamed component'}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => removeComponentFromForm(selectedComponent.id, child.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                            
+                            {(!selectedComponent.children || selectedComponent.children.length === 0) && (
+                              <p className="text-sm text-gray-500 text-center py-4">
+                                No components in this form. Add components using the dropdown above.
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeComponentFromForm(selectedComponent.id, child.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
-                    </Card>
-                  ))}
-                  
-                  {(!selectedComponent.children || selectedComponent.children.length === 0) && (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      No components in this form. Add components using the dropdown above.
+                    )}
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Options Section for Selection Components */}
+          {(selectedComponent.type === 'CheckboxGroup' || 
+            selectedComponent.type === 'RadioButtonsGroup' ||
+            selectedComponent.type === 'Dropdown' ||
+            selectedComponent.type === 'ChipsSelector') && (
+            <Collapsible 
+              open={expandedSections.has('options')} 
+              onOpenChange={() => toggleSection('options')}
+            >
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                  <div className="flex items-center space-x-2">
+                    <Settings className="w-4 h-4" />
+                    <span className="font-medium">Options</span>
+                    <Badge variant="outline" className="text-xs">
+                      {selectedComponent.data_source?.length || 0}
+                    </Badge>
+                  </div>
+                  {expandedSections.has('options') ? 
+                    <ChevronDown className="w-4 h-4" /> : 
+                    <ChevronRight className="w-4 h-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Options</Label>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => selectedElementId && addComponentOption(selectedElementId)}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Option
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {selectedComponent.data_source?.map((option: any, index: number) => (
+                        <Card key={option.id} className="p-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1">
+                              <Input
+                                value={option.title}
+                                onChange={(e) => handleOptionChange(option.id, e.target.value)}
+                                placeholder={`Option ${index + 1}`}
+                                className="text-sm"
+                              />
+                            </div>
+                            {selectedComponent.data_source && selectedComponent.data_source.length > 1 && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => selectedElementId && removeComponentOption(selectedElementId, option.id)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                    
+                    <p className="text-xs text-gray-500">
+                      {selectedComponent.type === 'Dropdown' ? 'Max 200 options' : 'Max 20 options'}, each option max 30 characters
                     </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
       </div>
     );
   };
@@ -832,24 +873,26 @@ export function InspectorPanel() {
             <div className="space-y-4">
               {/* JSON Editor Toolbar */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {jsonError ? (
-                    <div className="flex items-center text-red-600">
-                      <AlertCircle className="w-4 h-4 mr-1" />
-                      <span className="text-xs">Syntax Error</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center text-green-600">
-                      <Check className="w-4 h-4 mr-1" />
-                      <span className="text-xs">Valid JSON</span>
-                    </div>
-                  )}
-                  
-                  {hasUnsavedChanges && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
-                      Unsaved
-                    </Badge>
-                  )}
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    {jsonError ? (
+                      <div className="flex items-center text-red-600">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Syntax Error</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-green-600">
+                        <Check className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Valid JSON</span>
+                      </div>
+                    )}
+                    
+                    {hasUnsavedChanges && (
+                      <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                        Unsaved
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-center space-x-1">
@@ -927,84 +970,6 @@ export function InspectorPanel() {
                     }
                   }}
                 />
-              </div>
-
-              {/* Validation Summary for JSON */}
-              <div className="space-y-2">
-                {validationErrors.length > 0 && (
-                  <Alert className="border-orange-200 bg-orange-50">
-                    <Lightbulb className="h-4 w-4 text-orange-600" />
-                    <AlertDescription className="text-orange-800">
-                      <div className="font-medium">
-                        {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found
-                      </div>
-                      <div className="text-sm mt-1">
-                        Red lines in the editor indicate errors. Click on them to auto-fix common issues.
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Visual Studio-style Error Panel */}
-                {validationErrors.length > 0 && (
-                  <div className="border border-red-200 rounded-lg bg-red-50 max-h-48 overflow-y-auto">
-                    <div className="p-3 border-b border-red-200 bg-red-100">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <span className="font-medium text-red-900 text-sm">
-                          Problems ({validationErrors.length})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-red-200">
-                      {validationErrors.map((error, index) => (
-                        <div 
-                          key={index} 
-                          className="p-3 hover:bg-red-100 cursor-pointer transition-colors"
-                          onClick={() => {
-                            const lineNumber = findLineNumberForPath(error.path, jsonText);
-                            if (lineNumber > 0 && editorInstance) {
-                              editorInstance.revealLineInCenter(lineNumber);
-                              editorInstance.setPosition({ lineNumber, column: 1 });
-                              editorInstance.focus();
-                            }
-                          }}
-                        >
-                          <div className="flex items-start space-x-2">
-                            <div className="flex-shrink-0 mt-0.5">
-                              <div className="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-xs font-bold">!</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-red-900">
-                                {error.message}
-                              </div>
-                              <div className="text-xs text-red-700 mt-1">
-                                Path: {error.path}
-                              </div>
-                              <div className="text-xs text-red-600 mt-1">
-                                Line {findLineNumberForPath(error.path, jsonText)}
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 hover:bg-red-200"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleErrorFix(error);
-                              }}
-                              title="Auto-fix this error"
-                            >
-                              <Zap className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Save Button */}
