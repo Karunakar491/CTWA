@@ -15,29 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Plus, X, AlertCircle, Calendar, Image as ImageIcon, Settings, Trash2, Info, Copy, Check, Download, RotateCcw, Lightbulb, Zap, Globe, Wifi, Activity, Shield, Send } from 'lucide-react';
 import { useFlowStore } from '@/store/flowStore';
 import { ImageUploader } from './ImageUploader';
-import { ApiLogEntry } from '@/types/api';
-import { 
-  Plus, 
-  X, 
-  AlertCircle, 
-  Calendar, 
-  Image as ImageIcon, 
-  Settings, 
-  Trash2, 
-  Info, 
-  Copy, 
-  Check, 
-  Download, 
-  RotateCcw, 
-  Lightbulb, 
-  Zap, 
-  ChevronDown, 
-  ChevronRight,
-  Terminal,
-  Globe,
-  Clock,
-  FileText
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, Terminal, Clock, FileText } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { useToast } from '@/hooks/use-toast';
@@ -47,11 +25,6 @@ let editorStylesAdded = false;
 
 interface InspectorPanelProps {
   activeTab?: 'properties' | 'json' | 'dataExchange';
-  apiLogs?: ApiLogEntry[];
-}
-
-export function InspectorPanel({ activeTab = 'properties', apiLogs = [] }: InspectorPanelProps) {
-  activeTab?: 'properties' | 'json';
   apiLogs?: ApiLogEntry[];
 }
 

@@ -365,7 +365,7 @@ export function DataExchangeModal({ open, onOpenChange, apiLogs, onAddApiLog }: 
                               <div className="text-blue-400">app</div>
                               <span className="text-white">.post(</span>
                               <span className="text-yellow-400">'/whatsapp-flows'</span>
-                              <span className="text-white">, (req, res) => {`{`}</span>
+                              <span className="text-white">{`, (req, res) => {`}</span>
                               <br />
                               <span className="ml-4 text-blue-400">const</span>
                               <span className="text-white"> flowData = req.body;</span>
@@ -374,11 +374,11 @@ export function DataExchangeModal({ open, onOpenChange, apiLogs, onAddApiLog }: 
                               <br />
                               <span className="ml-4 text-white">console.log(flowData);</span>
                               <br />
-                              <span className="ml-4 text-white">res.json({`{`} success: </span>
+                              <span className="ml-4 text-white">{`res.json({ success: `}</span>
                               <span className="text-blue-400">true</span>
-                              <span className="text-white"> {`}`});</span>
+                              <span className="text-white">{` });`}</span>
                               <br />
-                              <span className="text-white">{`}`});</span>
+                              <span className="text-white">{`});`}</span>
                             </div>
                             
                             <Button
