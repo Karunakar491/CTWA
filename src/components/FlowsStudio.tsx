@@ -207,7 +207,7 @@ export function FlowsStudio({ onCreateFlow, onEditFlow }: FlowsStudioProps) {
             </div>
           </div>
           <Button onClick={handleCreateFlow} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" onClick={onCreateFlow} />
+            <Plus className="h-4 w-4 mr-2" />
             Create New Flow
           </Button>
         </div>
