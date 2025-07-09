@@ -76,17 +76,25 @@ export function FlowCanvas() {
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target && params.source !== params.target) {
-        const newEdge = addEdge({
+        const newEdge: Edge = {
           ...params,
           id: `${params.source}-${params.target}`,
           style: { stroke: '#25D366', strokeWidth: 2 },
           animated: true,
-        }, edges);
+        };
         
-        setEdges(newEdge);
+        setEdges(eds => addEdge(newEdge, eds));
         
-        // Update the flow data to reflect this connection
-        // Find a button or footer in the source screen and update its navigation target
+        // Add connection to flow data
+        addFlowConnection({
+          id: newEdge.id,
+          source: params.source,
+          target: params.target,
+          sourceHandle: params.sourceHandle || undefined,
+          targetHandle: params.targetHandle || undefined,
+        });
+        
+        // Update component navigation target
         const sourceScreen = flowData.screens.find(s => s.id === params.source);
         if (sourceScreen) {
           const navigableComponent = sourceScreen.data.find(c => 
@@ -100,7 +108,7 @@ export function FlowCanvas() {
         }
       }
     },
-    [edges, setEdges, flowData.screens, updateComponentNavigationTarget]
+    [edges, setEdges, flowData.screens, updateComponentNavigationTarget, addFlowConnection]
   );
 
   // Update nodes when flow data changes

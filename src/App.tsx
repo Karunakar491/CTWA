@@ -8,7 +8,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { useFlowStore } from '@/store/flowStore';
 import { getFlowById } from '@/services/metaApi';
 import { Construction, FileText, BarChart3 } from 'lucide-react';
-import './App.css';
 
 type ActiveView = 'dashboard' | 'flows' | 'flowLibrary' | 'reports' | 'flowBuilder';
 

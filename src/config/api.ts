@@ -1,9 +1,7 @@
-// src/config/api.ts
-
 export const META_API_CONFIG = {
   BASE_URL: 'https://graph.facebook.com/v22.0',
-  WABA_ID: '314510838411963',
-  ACCESS_TOKEN: 'EAAMFCYvYZBekBO4zSWfzfGig3Fr6PBGjXuZBrMmFePfHDgtBs2xXEFtwnqhDbQAPlTRFJ0BpLd1svF0a24DdmXKE3imgYkmRqP1bdim1GM5gXD0xGsKMYBaNvwZAZBXSi29l6j02bMX43cn6baPNNrLZAaqE6xyGfhDh2ZAveoEQLuhKpjpdP4aFdmse7otCSbYAZDZD'
+  WABA_ID: import.meta.env.VITE_META_WABA_ID || 'demo_waba_id',
+  ACCESS_TOKEN: import.meta.env.VITE_META_ACCESS_TOKEN || 'demo_access_token'
 };
 
 // Additional API endpoints for WhatsApp Flows

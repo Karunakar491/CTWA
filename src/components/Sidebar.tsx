@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   collapsed?: boolean;
   activeItem: string;
-  onItemClick: (item: 'dashboard' | 'flows' | 'flowLibrary' | 'reports') => void;
+  onItemClick: (item: 'dashboard' | 'flows' | 'flowLibrary' | 'reports' | 'flowBuilder') => void;
   onToggleCollapse?: () => void;
 }
 

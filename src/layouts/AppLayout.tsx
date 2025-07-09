@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 interface AppLayoutProps {
   children: React.ReactNode;
   activeItem: 'dashboard' | 'flows' | 'flowLibrary' | 'reports' | 'flowBuilder';
-  onNavigate: (item: 'dashboard' | 'flows' | 'flowLibrary' | 'reports') => void;
+  onNavigate: (item: 'dashboard' | 'flows' | 'flowLibrary' | 'reports' | 'flowBuilder') => void;
 }
 
 export function AppLayout({ children, activeItem, onNavigate }: AppLayoutProps) {

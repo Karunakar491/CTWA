@@ -36,10 +36,11 @@ import {
 interface SortableComponentProps {
   component: FlowComponent;
   screenId: string;
+  formId?: string;
   isNested?: boolean;
 }
 
-function SortableComponent({ component, screenId, isNested = false }: SortableComponentProps) {
+function SortableComponent({ component, screenId, formId, isNested = false }: SortableComponentProps) {
   const {
     attributes,
     listeners,
@@ -80,9 +81,9 @@ function SortableComponent({ component, screenId, isNested = false }: SortableCo
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isNested) {
-      // Find parent form and remove from it
-      // This is a simplified approach - in a real app you'd pass the parent ID
-      console.log('Delete nested component:', component.id);
+      if (formId) {
+        removeComponentFromForm(formId, component.id);
+      }
     } else {
       removeComponentFromScreen(screenId, component.id);
     }
@@ -212,6 +213,7 @@ function SortableComponent({ component, screenId, isNested = false }: SortableCo
                       key={child.id} 
                       component={child} 
                       screenId={screenId}
+                      formId={component.id}
                       isNested={true}
                     />
                   ))}

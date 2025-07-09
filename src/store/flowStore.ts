@@ -254,7 +254,9 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         
         // Find all screens that have navigation targets
         const reachableScreenIds = new Set<string>();
-        reachableScreenIds.add(state.flowData.screens[0]?.id); // First screen is always reachable
+        if (state.flowData.screens[0]) {
+          reachableScreenIds.add(state.flowData.screens[0].id); // First screen is always reachable
+        }
         
         state.flowData.screens.forEach(screen => {
           screen.data.forEach(component => {
