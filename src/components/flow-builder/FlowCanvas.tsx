@@ -15,7 +15,7 @@ import ReactFlow, {
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import ScreenNode from './ScreenNode';
+import { ScreenNode } from './ScreenNode';
 import { Plus, Eye, AlertTriangle, Info } from 'lucide-react';
 import { useFlowStore } from '@/store/flowStore';
 
