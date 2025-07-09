@@ -25,7 +25,7 @@ export function Stage() {
   // If no screens exist at all (shouldn't happen due to useEffect above, but safety check)
   if (flowData.screens.length === 0) {
     return (
-      <div className="h-full bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-gray-50 flex items-center justify-center p-8">
         <Card className="p-8 max-w-md text-center">
           <div className="mb-4">
             <Smartphone className="h-16 w-16 mx-auto text-gray-300" />
@@ -46,7 +46,7 @@ export function Stage() {
   }
 
   return (
-    <div className="h-full bg-gray-50">
+    <div className="h-full bg-gray-50 flow-canvas">
       <FlowCanvas />
     </div>
   );

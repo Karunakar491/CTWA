@@ -20,10 +20,15 @@ import {
   Eye
 } from "lucide-react";
 
+interface FlowsStudioProps {
+  onCreateFlow: () => void;
+  onEditFlow: (flowId: string) => void;
+}
+
 // Mock data for flows
 const mockFlows = [
   {
-    id: 1,
+    id: "flow_1",
     name: "Welcome Onboarding",
     status: "Deployed" as const,
     linkedTemplates: ["Welcome Message", "Getting Started"],
@@ -32,7 +37,7 @@ const mockFlows = [
     messagesSent: 1247
   },
   {
-    id: 2,
+    id: "flow_2",
     name: "Product Catalog Browser",
     status: "Deployed" as const,
     linkedTemplates: ["Product List", "Item Details", "Add to Cart"],
@@ -41,7 +46,7 @@ const mockFlows = [
     messagesSent: 892
   },
   {
-    id: 3,
+    id: "flow_3",
     name: "Customer Support Flow",
     status: "Draft" as const,
     linkedTemplates: ["Support Menu", "FAQ Response"],
@@ -50,7 +55,7 @@ const mockFlows = [
     messagesSent: 0
   },
   {
-    id: 4,
+    id: "flow_4",
     name: "Order Tracking System",
     status: "Deployed" as const,
     linkedTemplates: ["Order Status", "Delivery Updates"],
@@ -59,7 +64,7 @@ const mockFlows = [
     messagesSent: 634
   },
   {
-    id: 5,
+    id: "flow_5",
     name: "Feedback Collection",
     status: "Error" as const,
     linkedTemplates: ["Rating Request", "Review Form"],
@@ -68,7 +73,7 @@ const mockFlows = [
     messagesSent: 234
   },
   {
-    id: 6,
+    id: "flow_6",
     name: "Appointment Booking",
     status: "Draft" as const,
     linkedTemplates: ["Service Selection", "Time Slot Picker", "Confirmation"],
@@ -77,7 +82,7 @@ const mockFlows = [
     messagesSent: 0
   },
   {
-    id: 7,
+    id: "flow_7",
     name: "Newsletter Subscription",
     status: "Deployed" as const,
     linkedTemplates: ["Subscribe Prompt", "Preferences"],
@@ -86,7 +91,7 @@ const mockFlows = [
     messagesSent: 456
   },
   {
-    id: 8,
+    id: "flow_8",
     name: "Payment Processing",
     status: "Error" as const,
     linkedTemplates: ["Payment Options", "Receipt"],
@@ -95,7 +100,7 @@ const mockFlows = [
     messagesSent: 123
   },
   {
-    id: 9,
+    id: "flow_9",
     name: "Event Registration",
     status: "Draft" as const,
     linkedTemplates: ["Event Details", "Registration Form"],
@@ -104,7 +109,7 @@ const mockFlows = [
     messagesSent: 0
   },
   {
-    id: 10,
+    id: "flow_10",
     name: "Loyalty Program",
     status: "Deployed" as const,
     linkedTemplates: ["Points Balance", "Rewards Catalog"],
@@ -113,7 +118,7 @@ const mockFlows = [
     messagesSent: 789
   },
   {
-    id: 11,
+    id: "flow_11",
     name: "Survey Campaign",
     status: "Draft" as const,
     linkedTemplates: ["Survey Questions", "Thank You"],
@@ -122,7 +127,7 @@ const mockFlows = [
     messagesSent: 0
   },
   {
-    id: 12,
+    id: "flow_12",
     name: "Abandoned Cart Recovery",
     status: "Deployed" as const,
     linkedTemplates: ["Cart Reminder", "Discount Offer"],
@@ -134,7 +139,7 @@ const mockFlows = [
 
 type FlowStatus = "All" | "Deployed" | "Draft" | "Error";
 
-export function FlowsStudio() {
+export function FlowsStudio({ onCreateFlow, onEditFlow }: FlowsStudioProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FlowStatus>("All");
 
@@ -171,23 +176,19 @@ export function FlowsStudio() {
     }
   };
 
-  const handleCreateFlow = () => {
-    console.log("Navigate to flow builder");
+  const handleEditFlowClick = (flowId: string) => {
+    onEditFlow(flowId);
   };
 
-  const handleEditFlow = (flowId: number) => {
-    console.log(`Edit flow ${flowId}`);
-  };
-
-  const handleDuplicateFlow = (flowId: number) => {
+  const handleDuplicateFlow = (flowId: string) => {
     console.log(`Duplicate flow ${flowId}`);
   };
 
-  const handleDeleteFlow = (flowId: number) => {
+  const handleDeleteFlow = (flowId: string) => {
     console.log(`Delete flow ${flowId}`);
   };
 
-  const handleViewFlow = (flowId: number) => {
+  const handleViewFlow = (flowId: string) => {
     console.log(`View flow ${flowId}`);
   };
 
@@ -205,9 +206,9 @@ export function FlowsStudio() {
               <p className="text-gray-600 mt-1">Design and manage your WhatsApp conversation flows</p>
             </div>
           </div>
-          <Button onClick={handleCreateFlow} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={onCreateFlow} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
-            Create Flow
+            Create New Flow
           </Button>
         </div>
       </div>
@@ -374,7 +375,7 @@ export function FlowsStudio() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditFlow(flow.id)}>
+                           <DropdownMenuItem onClick={() => handleEditFlowClick(flow.id)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Flow
                             </DropdownMenuItem>

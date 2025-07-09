@@ -71,11 +71,10 @@
     min-height: 100vh;
   }
 }
-
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* Optimized component styles */
+.flow-builder-container {
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* WhatsApp-native styling overrides */
@@ -111,6 +110,7 @@
 /* Resizable panel handle styling */
 [data-panel-resize-handle-enabled] {
   transition: background-color 0.2s ease;
+  cursor: col-resize;
 }
 
 [data-panel-resize-handle-enabled]:hover {
@@ -120,7 +120,9 @@
 /* Sidebar overlay animations */
 .sidebar-overlay {
   backdrop-filter: blur(1px);
+  transition: opacity 0.3s ease;
 }
+
 /* Smooth sidebar transitions */
 .sidebar-container {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -134,6 +136,7 @@
 /* React Flow styling improvements */
 .react-flow__node {
   cursor: default;
+  transition: box-shadow 0.2s ease;
 }
 
 .react-flow__node.selected {
@@ -143,12 +146,18 @@
 /* Drag and drop styling */
 .dnd-dragging {
   opacity: 0.5;
-  transform: rotate(5deg);
+  transform: rotate(2deg) scale(0.95);
+  transition: all 0.2s ease;
 }
 
 /* Component palette styling */
 .component-palette-item {
   transition: all 0.2s ease;
+  cursor: grab;
+}
+
+.component-palette-item:active {
+  cursor: grabbing;
 }
 
 .component-palette-item:hover {
@@ -159,6 +168,8 @@
 /* VS Code-like console styling */
 .console-log-entry {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .console-log-entry:hover {
@@ -186,6 +197,7 @@
 /* JSON Editor enhancements */
 .monaco-editor .error-line {
   animation: pulse-error 2s infinite;
+  border-radius: 3px;
 }
 
 @keyframes pulse-error {
@@ -197,4 +209,23 @@
 .console-filter-active {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Performance optimizations */
+.flow-canvas {
+  will-change: transform;
+}
+
+.component-node {
+  will-change: transform, opacity;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -14,7 +14,7 @@ import { DraggableComponent } from './DraggableComponent';
 export function ComponentPalette() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const { addNewScreen, flowData } = useFlowStore();
+  const { addNewScreen } = useFlowStore();
 
   const filteredComponents = componentTypes.filter(component => {
     const matchesSearch = component.label.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -78,12 +78,21 @@ export interface FlowScreen {
   };
 }
 
+export interface FlowConnection {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+}
+
 export interface FlowData {
   version: string;
   data_api_version?: string;
   name: string;
   routing_model?: Record<string, string[]>;
   screens: FlowScreen[];
+  connections?: FlowConnection[];
 }
 
 interface FlowState {
@@ -111,8 +120,14 @@ interface FlowActions {
   addChildComponentToForm: (formId: string, componentType: ComponentType) => void;
   removeComponentFromForm: (formId: string, childId: string) => void;
   deleteScreen: (screenId: string) => void;
+  duplicateScreen: (screenId: string) => FlowScreen;
   updateScreenTitle: (screenId: string, title: string) => void;
   setDeployedFlowId: (id: string | null) => void;
+  removeComponentFromScreen: (screenId: string, componentId: string) => void;
+  reorderComponentsInScreen: (screenId: string, componentIds: string[]) => void;
+  updateComponentNavigationTarget: (componentId: string, targetScreenId: string) => void;
+  addFlowConnection: (connection: FlowConnection) => void;
+  removeFlowConnection: (connectionId: string) => void;
 }
 
 // Helper function to find component by ID (including nested components)
@@ -144,13 +159,31 @@ const updateComponentById = (components: FlowComponent[], id: string, property: 
   return false;
 };
 
+// Helper function to generate unique IDs
+const generateUniqueId = (prefix: string): string => {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Helper function to deep clone a component with new IDs
+const cloneComponentWithNewIds = (component: FlowComponent): FlowComponent => {
+  const cloned = { ...component };
+  cloned.id = generateUniqueId(component.type.toLowerCase());
+  
+  if (cloned.children) {
+    cloned.children = cloned.children.map(child => cloneComponentWithNewIds(child));
+  }
+  
+  return cloned;
+};
+
 // Start with completely empty flow
 const initialFlowData: FlowData = {
   version: "7.1",
   data_api_version: "3.0",
   name: "My New WhatsApp Flow",
   routing_model: {},
-  screens: []
+  screens: [],
+  connections: []
 };
 
 export const useFlowStore = create<FlowState & FlowActions>()(
@@ -170,8 +203,11 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         const state = get();
         const { errors } = whatsappFlowsValidator.validate(state.flowData);
         
+        // Add flow-level validation for unreachable screens
+        const flowLevelErrors = get().validateFlowConnections();
+        
         // Merge internal validation errors with external errors (e.g., from Meta API)
-        const allErrors = [...errors, ...externalErrors];
+        const allErrors = [...errors, ...externalErrors, ...flowLevelErrors];
         
         // Create error status map for quick lookup
         const errorStatus = new Map<string, boolean>();
@@ -191,6 +227,17 @@ export const useFlowStore = create<FlowState & FlowActions>()(
               }
             }
           }
+          
+          // Mark screens with errors
+          if (error.path.includes('/screens/')) {
+            const screenIndex = parseInt(error.path.split('/screens/')[1]?.split('/')[0]);
+            if (!isNaN(screenIndex)) {
+              const screen = state.flowData.screens[screenIndex];
+              if (screen) {
+                errorStatus.set(screen.id, true);
+              }
+            }
+          }
         });
         
         set({ 
@@ -199,10 +246,47 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         });
       },
 
+      validateFlowConnections: () => {
+        const state = get();
+        const errors: ValidationError[] = [];
+        
+        if (state.flowData.screens.length <= 1) return errors;
+        
+        // Find all screens that have navigation targets
+        const reachableScreenIds = new Set<string>();
+        if (state.flowData.screens[0]) {
+          reachableScreenIds.add(state.flowData.screens[0].id); // First screen is always reachable
+        }
+        
+        state.flowData.screens.forEach(screen => {
+          screen.data.forEach(component => {
+            if (component.on_click_action?.next?.name) {
+              reachableScreenIds.add(component.on_click_action.next.name);
+            }
+          });
+        });
+        
+        // Check for unreachable screens
+        state.flowData.screens.forEach((screen, index) => {
+          if (index > 0 && !reachableScreenIds.has(screen.id)) {
+            errors.push({
+              path: `/screens/${index}`,
+              message: `Screen "${screen.title}" is unreachable. No buttons or actions navigate to this screen.`,
+              value: screen.id,
+              severity: 'warning',
+              originalMessage: 'Unreachable screen detected'
+            });
+          }
+        });
+        
+        return errors;
+      },
+
       clearApiErrors: () => {
         // Re-run validation with only internal errors (no external errors)
         get().validateFlow([]);
       },
+      
       setFlowData: (data) => {
         set({ flowData: data });
         get().validateFlow();
@@ -237,7 +321,6 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         get().validateFlow();
       },
 
-      // --- NEW ACTION IMPLEMENTATION ---
       updateScreenProperty: (screenId, property, value) => {
         const state = get();
         const newFlowData = { ...state.flowData };
@@ -289,7 +372,7 @@ export const useFlowStore = create<FlowState & FlowActions>()(
       addNewScreen: () => {
         const state = get();
         const screenCount = state.flowData.screens.length;
-        const newScreenId = `screen_${Date.now()}`;
+        const newScreenId = generateUniqueId('screen');
         const newScreen: FlowScreen = {
           id: newScreenId,
           title: `Screen ${screenCount + 1}`,
@@ -313,8 +396,20 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         const state = get();
         const newFlowData = {
           ...state.flowData,
-          screens: state.flowData.screens.filter(s => s.id !== screenId)
+          screens: state.flowData.screens.filter(s => s.id !== screenId),
+          connections: state.flowData.connections?.filter(c => 
+            c.source !== screenId && c.target !== screenId
+          ) || []
         };
+        
+        // Remove any navigation references to the deleted screen
+        newFlowData.screens.forEach(screen => {
+          screen.data.forEach(component => {
+            if (component.on_click_action?.next?.name === screenId) {
+              component.on_click_action.next.name = '';
+            }
+          });
+        });
         
         // If we deleted the active screen, set a new active screen
         let newActiveScreenId = state.activeScreenId;
@@ -327,6 +422,36 @@ export const useFlowStore = create<FlowState & FlowActions>()(
           activeScreenId: newActiveScreenId,
           selectedElementId: null
         });
+        get().validateFlow();
+      },
+
+      duplicateScreen: (screenId) => {
+        const state = get();
+        const screenToDuplicate = state.flowData.screens.find(s => s.id === screenId);
+        
+        if (!screenToDuplicate) {
+          throw new Error('Screen not found');
+        }
+        
+        const newScreenId = generateUniqueId('screen');
+        const duplicatedScreen: FlowScreen = {
+          ...screenToDuplicate,
+          id: newScreenId,
+          title: `${screenToDuplicate.title} (Copy)`,
+          data: screenToDuplicate.data.map(component => cloneComponentWithNewIds(component))
+        };
+        
+        const newFlowData = {
+          ...state.flowData,
+          screens: [...state.flowData.screens, duplicatedScreen]
+        };
+        
+        set({ 
+          flowData: newFlowData,
+          activeScreenId: newScreenId
+        });
+        get().validateFlow();
+        return duplicatedScreen;
       },
 
       updateScreenTitle: (screenId, title) => {
@@ -347,14 +472,54 @@ export const useFlowStore = create<FlowState & FlowActions>()(
         if (screen) {
           // Use centralized component defaults
           const newComponent = getComponentDefaultProperties(componentType);
-          screen.data.push(newComponent);
+          
+          // Find if there's a Footer component and insert before it
+          const footerIndex = screen.data.findIndex(c => c.type === 'Footer');
+          if (footerIndex !== -1) {
+            screen.data.splice(footerIndex, 0, newComponent);
+          } else {
+            screen.data.push(newComponent);
+          }
         }
         
         set({ flowData: newFlowData });
         get().validateFlow();
         
         // Return the new component for the script executor
-        return screen?.data[screen.data.length - 1] as FlowComponent;
+        const componentIndex = screen?.data.findIndex(c => c.id === newComponent.id) ?? -1;
+        return screen?.data[componentIndex] as FlowComponent;
+      },
+
+      removeComponentFromScreen: (screenId, componentId) => {
+        const state = get();
+        const newFlowData = { ...state.flowData };
+        const screen = newFlowData.screens.find(s => s.id === screenId);
+        
+        if (screen) {
+          screen.data = screen.data.filter(component => component.id !== componentId);
+        }
+        
+        set({ flowData: newFlowData });
+        get().validateFlow();
+      },
+
+      reorderComponentsInScreen: (screenId, componentIds) => {
+        const state = get();
+        const newFlowData = { ...state.flowData };
+        const screen = newFlowData.screens.find(s => s.id === screenId);
+        
+        if (screen) {
+          const reorderedComponents: FlowComponent[] = [];
+          componentIds.forEach(id => {
+            const component = screen.data.find(c => c.id === id);
+            if (component) {
+              reorderedComponents.push(component);
+            }
+          });
+          screen.data = reorderedComponents;
+        }
+        
+        set({ flowData: newFlowData });
       },
 
       addChildComponentToForm: (formId, componentType) => {
@@ -386,6 +551,50 @@ export const useFlowStore = create<FlowState & FlowActions>()(
             break;
           }
         }
+        
+        set({ flowData: newFlowData });
+      },
+
+      updateComponentNavigationTarget: (componentId, targetScreenId) => {
+        const state = get();
+        const newFlowData = { ...state.flowData };
+        
+        for (const screen of newFlowData.screens) {
+          const component = findComponentById(screen.data, componentId);
+          if (component && (component.type === 'Button' || component.type === 'Footer')) {
+            if (!component.on_click_action) {
+              component.on_click_action = {
+                name: 'navigate',
+                next: { type: 'screen', name: targetScreenId }
+              };
+            } else {
+              component.on_click_action.name = 'navigate';
+              component.on_click_action.next = { type: 'screen', name: targetScreenId };
+            }
+            break;
+          }
+        }
+        
+        set({ flowData: newFlowData });
+        get().validateFlow();
+      },
+
+      addFlowConnection: (connection) => {
+        const state = get();
+        const newFlowData = {
+          ...state.flowData,
+          connections: [...(state.flowData.connections || []), connection]
+        };
+        
+        set({ flowData: newFlowData });
+      },
+
+      removeFlowConnection: (connectionId) => {
+        const state = get();
+        const newFlowData = {
+          ...state.flowData,
+          connections: state.flowData.connections?.filter(c => c.id !== connectionId) || []
+        };
         
         set({ flowData: newFlowData });
       },
