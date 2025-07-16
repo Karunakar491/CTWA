@@ -60,27 +60,7 @@ function App() {
       case 'flows':
         return <FlowsStudio onCreateFlow={handleCreateFlow} onEditFlow={handleEditFlow} />;
       case 'flowLibrary':
-        return (
-          <div className="flex-1 bg-slate-50 flex items-center justify-center">
-            <Card className="max-w-md text-center">
-              <CardHeader>
-                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-blue-600" />
-                </div>
-                <CardTitle>Flow Library</CardTitle>
-                <CardDescription>
-                  Browse and manage your flow templates and library
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center space-x-2 text-orange-600 bg-orange-50 p-3 rounded-lg">
-                  <Construction className="w-4 h-4" />
-                  <span className="text-sm font-medium">Coming Soon</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return <FlowLibrary onCreateFlow={handleCreateFlow} onEditFlow={handleEditFlow} />;
       case 'reports':
         return (
           <div className="flex-1 bg-slate-50 flex items-center justify-center">
