@@ -22,5 +22,5 @@ USER nodejs
 EXPOSE 3001
 EXPOSE 9229
 
-# Start development server
-CMD ["npm", "run", "dev"]
+# Start development server (use dev:clean for clean implementation)
+CMD ["npm", "run", "dev:clean"]

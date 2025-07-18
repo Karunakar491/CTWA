@@ -1,0 +1,94 @@
+{
+  "name": "Test Welcome Flow",
+  "version": "7.1",
+  "screens": [
+    {
+      "id": "welcome_screen",
+      "title": "Welcome",
+      "data": [
+        {
+          "type": "TextHeading",
+          "text": "Welcome to our service!",
+          "name": "welcome_heading"
+        },
+        {
+          "type": "TextBody",
+          "text": "Thank you for connecting with us. How can we help you today?",
+          "name": "welcome_body"
+        },
+        {
+          "type": "Button",
+          "text": "Get Started",
+          "name": "start_button",
+          "action": {
+            "name": "navigate",
+            "next": {
+              "type": "screen",
+              "name": "options_screen"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "options_screen",
+      "title": "Options",
+      "data": [
+        {
+          "type": "TextHeading",
+          "text": "Available Options",
+          "name": "options_heading"
+        },
+        {
+          "type": "RadioButtonsGroup",
+          "name": "options_selection",
+          "label": "Please select an option:",
+          "required": true,
+          "data_source": [
+            {
+              "id": "option1",
+              "title": "Learn more about our products"
+            },
+            {
+              "id": "option2",
+              "title": "Contact customer support"
+            },
+            {
+              "id": "option3",
+              "title": "Leave feedback"
+            }
+          ]
+        },
+        {
+          "type": "Button",
+          "text": "Submit",
+          "name": "submit_button",
+          "action": {
+            "name": "navigate",
+            "next": {
+              "type": "screen",
+              "name": "thank_you_screen"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "thank_you_screen",
+      "title": "Thank You",
+      "terminal": true,
+      "data": [
+        {
+          "type": "TextHeading",
+          "text": "Thank You!",
+          "name": "thank_you_heading"
+        },
+        {
+          "type": "TextBody",
+          "text": "We've received your selection. Someone from our team will be in touch shortly.",
+          "name": "thank_you_body"
+        }
+      ]
+    }
+  ]
+}

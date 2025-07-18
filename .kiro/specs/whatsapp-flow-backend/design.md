@@ -2,9 +2,31 @@
 
 ## Overview
 
-The WhatsApp Flow Backend is a comprehensive middleware system built with Node.js/Express that serves as an intelligent layer between the frontend flow builder and Meta's WhatsApp Business APIs. The system provides flow validation, library management, API orchestration, and analytics capabilities.
+The WhatsApp Flow Backend is a streamlined middleware system built with Node.js/Express that connects the frontend drag-and-drop flow builder with Meta's WhatsApp Business APIs. The system provides flow validation, template library management, API integration, and reporting capabilities.
 
-The architecture follows microservices principles with clear separation of concerns, implementing robust error handling, caching, and monitoring to ensure reliable operation at scale.
+The architecture follows a simplified monolithic approach with clear separation of concerns, focusing on core functionality that can be easily integrated into a larger product.
+
+## Meta WhatsApp Flows API References
+
+This design is based on the official Meta WhatsApp Flows API documentation:
+
+1. [WhatsApp Flows Overview](https://developers.facebook.com/docs/whatsapp/flows/)
+2. [Implementing Your Flow Endpoint](https://developers.facebook.com/docs/whatsapp/flows/guides/implementingyourflowendpoint)
+3. [Sending a Flow](https://developers.facebook.com/docs/whatsapp/flows/guides/sendingaflow)
+4. [Receiving Flow Responses](https://developers.facebook.com/docs/whatsapp/flows/guides/receiveflowresponse)
+5. [Health Monitoring](https://developers.facebook.com/docs/whatsapp/flows/guides/healthmonitoring)
+6. [Best Practices](https://developers.facebook.com/docs/whatsapp/flows/guides/bestpractices)
+7. [Testing & Debugging](https://developers.facebook.com/docs/whatsapp/flows/guides/testingdebugging)
+8. [Flow JSON Reference](https://developers.facebook.com/docs/whatsapp/flows/reference/flowjson)
+9. [Flows API Reference](https://developers.facebook.com/docs/whatsapp/flows/reference/flowsapi)
+10. [Error Codes](https://developers.facebook.com/docs/whatsapp/flows/reference/error-codes)
+11. [Versioning](https://developers.facebook.com/docs/whatsapp/flows/reference/versioning)
+12. [Metrics API](https://developers.facebook.com/docs/whatsapp/flows/reference/metrics_api)
+13. [Flows Webhooks](https://developers.facebook.com/docs/whatsapp/flows/reference/flowswebhooks)
+14. [Flow Lifecycle](https://developers.facebook.com/docs/whatsapp/flows/reference/lifecycle)
+15. [Components Reference](https://developers.facebook.com/docs/whatsapp/flows/reference/components)
+16. [Media Upload](https://developers.facebook.com/docs/whatsapp/flows/reference/media_upload)
+17. [Changelogs](https://developers.facebook.com/docs/whatsapp/flows/changelogs)
 
 ## Architecture
 
@@ -14,29 +36,24 @@ The architecture follows microservices principles with clear separation of conce
 graph TB
     subgraph "Frontend Layer"
         FB[Flow Builder UI]
-        DS[Dashboard]
-        FS[Flows Studio]
+        LIB[Template Library]
+        DASH[Dashboard]
+        REP[Reports Panel]
     end
     
-    subgraph "API Gateway"
-        AG[API Gateway/Load Balancer]
-        AUTH[Authentication Service]
-        RATE[Rate Limiter]
-    end
-    
-    subgraph "Core Services"
-        FS_SVC[Flow Service]
-        VAL_SVC[Validation Service]
-        LIB_SVC[Library Service]
-        META_SVC[Meta API Service]
-        ANALYTICS[Analytics Service]
+    subgraph "Backend Layer"
+        API[Express API Server]
+        FLOW[Flow Service]
+        VAL[Validation Service]
+        TMPL[Template Service]
+        META[Meta API Service]
+        REPORT[Reporting Service]
+        CONFIG[Configuration Service]
     end
     
     subgraph "Data Layer"
-        REDIS[(Redis Cache)]
-        POSTGRES[(PostgreSQL)]
-        MONGO[(MongoDB)]
-        S3[(File Storage)]
+        FS[(File Storage)]
+        DB[(SQLite/JSON DB)]
     end
     
     subgraph "External APIs"
@@ -44,39 +61,28 @@ graph TB
         WEBHOOK[Meta Webhooks]
     end
     
-    subgraph "Infrastructure"
-        QUEUE[Message Queue]
-        LOGS[Logging Service]
-        MONITOR[Monitoring]
-    end
+    FB --> API
+    LIB --> API
+    DASH --> API
+    REP --> API
     
-    FB --> AG
-    DS --> AG
-    FS --> AG
+    API --> FLOW
+    API --> VAL
+    API --> TMPL
+    API --> REPORT
+    API --> CONFIG
     
-    AG --> AUTH
-    AG --> RATE
-    AG --> FS_SVC
-    AG --> VAL_SVC
-    AG --> LIB_SVC
-    AG --> ANALYTICS
-    
-    FS_SVC --> META_SVC
-    VAL_SVC --> META_SVC
-    META_SVC --> META_API
+    FLOW --> META
+    VAL --> META
+    META --> META_API
     META_API --> WEBHOOK
     
-    FS_SVC --> POSTGRES
-    LIB_SVC --> MONGO
-    META_SVC --> REDIS
-    ANALYTICS --> POSTGRES
+    FLOW --> FS
+    TMPL --> FS
+    REPORT --> DB
+    CONFIG --> FS
     
-    FS_SVC --> S3
-    LIB_SVC --> S3
-    
-    META_SVC --> QUEUE
-    QUEUE --> LOGS
-    LOGS --> MONITOR
+    META --> CONFIG
 ```
 
 ### Service Architecture
