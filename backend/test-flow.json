@@ -1,5 +1,4 @@
 {
-  "name": "Test Welcome Flow",
   "version": "7.1",
   "screens": [
     {
@@ -8,23 +7,23 @@
       "data": [
         {
           "type": "TextHeading",
-          "text": "Welcome to our service!",
-          "name": "welcome_heading"
+          "text": "Welcome to our service!"
+          
         },
         {
           "type": "TextBody",
-          "text": "Thank you for connecting with us. How can we help you today?",
-          "name": "welcome_body"
+          "text": "Thank you for connecting with us. How can we help you today?"
+          
         },
         {
           "type": "Button",
           "text": "Get Started",
-          "name": "start_button",
+          
           "action": {
             "name": "navigate",
             "next": {
-              "type": "screen",
-              "name": "options_screen"
+              "type": "screen"
+              
             }
           }
         }
@@ -36,12 +35,11 @@
       "data": [
         {
           "type": "TextHeading",
-          "text": "Available Options",
-          "name": "options_heading"
+          "text": "Available Options"
+          
         },
         {
           "type": "RadioButtonsGroup",
-          "name": "options_selection",
           "label": "Please select an option:",
           "required": true,
           "data_source": [
@@ -62,12 +60,12 @@
         {
           "type": "Button",
           "text": "Submit",
-          "name": "submit_button",
+          
           "action": {
             "name": "navigate",
             "next": {
-              "type": "screen",
-              "name": "thank_you_screen"
+              "type": "screen"
+              
             }
           }
         }
@@ -80,13 +78,13 @@
       "data": [
         {
           "type": "TextHeading",
-          "text": "Thank You!",
-          "name": "thank_you_heading"
+          "text": "Thank You!"
+          
         },
         {
           "type": "TextBody",
-          "text": "We've received your selection. Someone from our team will be in touch shortly.",
-          "name": "thank_you_body"
+          "text": "We've received your selection. Someone from our team will be in touch shortly."
+          
         }
       ]
     }

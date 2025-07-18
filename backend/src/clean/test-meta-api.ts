@@ -37,7 +37,7 @@ async function testMetaApiIntegration() {
     logger.info('Creating flow in Meta API...');
     const createParams = {
       name: flowData.name,
-      categories: [{ category: 'OTHER' }]
+      categories: [{ category: 'OTHER' as const }]
     };
     
     const createResult = await metaApiService.createFlow(createParams);
@@ -84,7 +84,7 @@ async function testMetaApiIntegration() {
 testMetaApiIntegration()
   .then(result => {
     console.log('Test result:', result);
-    process.exit(result.success ? 0 : 1);
+    process.exit(result && result.success ? 0 : 1);
   })
   .catch(error => {
     console.error('Test failed with error:', error);

@@ -121,7 +121,6 @@ export const commonSchemas = {
   flowJson: Joi.object({
     version: Joi.string().valid('3.0', '4.0', '5.0', '6.0', '7.0', '7.1').required(),
     data_api_version: Joi.string().valid('3.0').optional(),
-    name: Joi.string().min(1).max(255).required(),
     routing_model: Joi.object().optional(),
     screens: Joi.array().items(
       Joi.object({

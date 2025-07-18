@@ -1,0 +1,9 @@
+{
+  "default": {
+    "accessToken": "",
+    "wabaId": "",
+    "phoneNumberId": "",
+    "apiVersion": "v18.0",
+    "accountName": "Default Account"
+  }
+}
